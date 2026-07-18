@@ -23,3 +23,7 @@ This skill is automatically triggered when working on the SIGRE project.
 - Navigation is handled via state in `App.jsx` using a Bottom Navigation bar for simplicity in the prototype phase.
 - Core views are located in `src/components/views/`.
 - UI primitives are located in `src/components/ui/` and do not heavily rely on Radix for the initial prototype to avoid dependency issues.
+
+## Additional Skills
+- **Frontend Design**: Contains best practices for UX/UI design. (from `anthropics/skills/frontend-design`)
+- **React Best Practices**: Contains best practices and optimizations for React apps. (from `vercel-labs/agent-skills/vercel-react-best-practices`)
