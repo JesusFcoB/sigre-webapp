@@ -1,6 +1,6 @@
 # SIGRE WebApp
 
-Sistema de Gestión de Recursos y Expedientes (o similar).
+Sistema Integral de Gestión de Recursos Escolares.
 
 ## Inicialización del Proyecto
 
