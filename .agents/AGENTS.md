@@ -16,4 +16,4 @@ Este archivo (`AGENTS.md`) define el comportamiento, reglas y lineamientos que c
 ## 3. Arquitectura y Buenas Prácticas
 - Usar siempre Componentes Funcionales (Functional Components) y Hooks.
 - Mantener el estado local de ser posible y evitar el "prop drilling" excesivo.
-- Aprovechar las guías locales ubicadas en `.agents/skills/frontend_design` y `.agents/skills/react_best_practices`.
+- Aprovechar las guías locales ubicadas en `.agents/skills/`. Además de diseño y React, existen lineamientos obligatorios para análisis de sistemas (`systems_analyst`), bases de datos (`database_design`) y control de versiones (`git_best_practices`).
