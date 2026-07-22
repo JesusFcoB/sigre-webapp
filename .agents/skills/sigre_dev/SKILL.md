@@ -25,5 +25,8 @@ This skill is automatically triggered when working on the SIGRE project.
 - UI primitives are located in `src/components/ui/` and do not heavily rely on Radix for the initial prototype to avoid dependency issues.
 
 ## Additional Skills
-- **Frontend Design**: Contains best practices for UX/UI design. (from `anthropics/skills/frontend-design`)
-- **React Best Practices**: Contains best practices and optimizations for React apps. (from `vercel-labs/agent-skills/vercel-react-best-practices`)
+- **Frontend Design**: Contains best practices for UX/UI design. (from `anthropics/skills/frontend-design` & local `frontend_design`)
+- **React Best Practices**: Contains best practices and optimizations for React apps. (from `vercel-labs/agent-skills/vercel-react-best-practices` & local `react_best_practices`)
+- **Systems Analyst**: Guidelines for requirement validation, system planning, and scope management. (local `systems_analyst`)
+- **Database Design**: Best practices for PostgreSQL and Supabase, focusing on RLS and data integrity. (local `database_design`)
+- **Git Best Practices**: Enforces conventional commits, atomic commits, and proper branching strategies. (local `git_best_practices`)
