@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { Wifi, WifiOff, Box, AlertTriangle, CheckCircle2, List, X, ExternalLink, Edit2, Trash2, Moon, Sun, MonitorSmartphone, School } from "lucide-react"
+import { Wifi, WifiOff, Box, AlertTriangle, CheckCircle2, List, X, ExternalLink, Edit2, Trash2, Moon, Sun, MonitorSmartphone, School, Users } from "lucide-react"
 
 const data = [
   { name: 'Nuevos', value: 120, color: '#3b82f6' },
@@ -23,6 +23,7 @@ export default function DashboardView({ navigateTo }) {
   const setEditingTicket = useStore((state) => state.setEditingTicket)
   const theme = useStore((state) => state.theme)
   const toggleTheme = useStore((state) => state.toggleTheme)
+  const role = useStore((state) => state.role)
 
   // Consultas en vivo a Dexie
   const totalItemsCount = useLiveQuery(() => db.items.count()) || 0;
@@ -144,6 +145,21 @@ export default function DashboardView({ navigateTo }) {
             </p>
           </CardContent>
         </Card>
+
+        {role === 'director' && (
+          <Card className="border-l-4 border-l-orange-500 shadow-sm hover:border-orange-600 transition-all cursor-pointer hover:shadow-md" onClick={() => navigateTo('users')}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Usuarios Locales</CardTitle>
+              <Users className="w-4 h-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-foreground">Gestión</div>
+              <p className="text-xs text-orange-500 font-bold mt-1 hover:underline flex items-center gap-1">
+                Altas y bajas <ExternalLink className="w-3 h-3" />
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Chart */}

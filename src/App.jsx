@@ -5,16 +5,22 @@ import ReportView from './components/views/ReportView'
 import ConciliationView from './components/views/ConciliationView'
 import AssetRegistrationView from './components/views/AssetRegistrationView'
 import ClassroomInventoryView from './components/views/ClassroomInventoryView'
-import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, PackagePlus } from 'lucide-react'
+import LoginView from './components/views/LoginView'
+import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, PackagePlus, LogOut } from 'lucide-react'
 import { useStore } from './store/useStore'
 import { syncTicketsToSupabase, syncItemsToSupabase, syncValesToSupabase } from './lib/sync'
 import { db } from './lib/db'
 import LocationsView from './components/views/LocationsView'
+import UserManagementView from './components/views/UserManagementView'
+import { Button } from './components/ui/button'
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const setOnlineStatus = useStore((state) => state.setOnlineStatus)
   const isOnline = useStore((state) => state.isOnline)
+  const user = useStore((state) => state.user)
+  const role = useStore((state) => state.role)
+  const logout = useStore((state) => state.logout)
 
   useEffect(() => {
     const handleOnline = async () => {
@@ -77,14 +83,33 @@ function App() {
         return <ClassroomInventoryView navigateTo={setActiveTab} />
       case 'locations':
         return <LocationsView navigateTo={setActiveTab} />
+      case 'users':
+        return <UserManagementView />
       default:
         return <DashboardView />
     }
   }
 
+  if (!user) {
+    return <LoginView />
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       
+      {/* Header */}
+      <header className="flex justify-between items-center px-4 py-3 bg-card border-b shadow-sm z-40 relative">
+        <h1 className="text-xl font-bold text-primary tracking-tight">SIGRE</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground hidden md:inline-block font-medium">
+            {user.name} <span className="opacity-70">({role})</span>
+          </span>
+          <Button variant="ghost" size="icon" onClick={logout} title="Cerrar Sesión" className="text-muted-foreground hover:text-destructive">
+            <LogOut className="w-5 h-5" />
+          </Button>
+        </div>
+      </header>
+
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8 max-w-5xl mx-auto w-full">
         {renderView()}
@@ -93,18 +118,22 @@ function App() {
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-50 px-2 pb-safe md:px-0 md:static md:border-t-0 md:bg-transparent md:shadow-none">
         <div className="max-w-5xl mx-auto flex justify-around items-center h-20 md:hidden">
-          <NavItem 
-            icon={<LayoutDashboard className="w-5 h-5" />} 
-            label="Métricas" 
-            isActive={activeTab === 'dashboard'} 
-            onClick={() => setActiveTab('dashboard')} 
-          />
-          <NavItem 
-            icon={<PackagePlus className="w-5 h-5" />} 
-            label="Altas" 
-            isActive={activeTab === 'registration'} 
-            onClick={() => setActiveTab('registration')} 
-          />
+          {role !== 'profesor' && (
+            <NavItem 
+              icon={<LayoutDashboard className="w-5 h-5" />} 
+              label="Métricas" 
+              isActive={activeTab === 'dashboard'} 
+              onClick={() => setActiveTab('dashboard')} 
+            />
+          )}
+          {role !== 'profesor' && (
+            <NavItem 
+              icon={<PackagePlus className="w-5 h-5" />} 
+              label="Altas" 
+              isActive={activeTab === 'registration'} 
+              onClick={() => setActiveTab('registration')} 
+            />
+          )}
           <NavItem 
             icon={<QrCode className="w-6 h-6" />} 
             label="Escáner" 
@@ -127,9 +156,9 @@ function App() {
         </div>
         
         {/* Desktop Sidebar / Topbar equivalent (simplified for prototype) */}
-        <div className="hidden md:flex max-w-5xl mx-auto justify-center gap-4 py-4 bg-card rounded-t-3xl border-t border-x px-8">
-           <ButtonNavDesktop icon={<LayoutDashboard />} label="Dashboard" isActive={activeTab==='dashboard'} onClick={()=>setActiveTab('dashboard')} />
-           <ButtonNavDesktop icon={<PackagePlus />} label="Alta Bienes" isActive={activeTab==='registration'} onClick={()=>setActiveTab('registration')} />
+        <div className="hidden md:flex max-w-5xl mx-auto justify-center gap-4 py-4 bg-card rounded-t-3xl border-t border-x px-8 mt-auto">
+           {role !== 'profesor' && <ButtonNavDesktop icon={<LayoutDashboard />} label="Dashboard" isActive={activeTab==='dashboard'} onClick={()=>setActiveTab('dashboard')} />}
+           {role !== 'profesor' && <ButtonNavDesktop icon={<PackagePlus />} label="Alta Bienes" isActive={activeTab==='registration'} onClick={()=>setActiveTab('registration')} />}
            <ButtonNavDesktop icon={<QrCode />} label="Escáner QR" isActive={activeTab==='scanner'} onClick={()=>setActiveTab('scanner')} />
            <ButtonNavDesktop icon={<AlertCircle />} label="Reportar" isActive={activeTab==='report'} onClick={()=>setActiveTab('report')} />
            <ButtonNavDesktop icon={<FileSpreadsheet />} label="Conciliación" isActive={activeTab==='conciliation'} onClick={()=>setActiveTab('conciliation')} />
