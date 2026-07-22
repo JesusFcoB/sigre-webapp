@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, School, User, PlusCircle, Trash2, Edit2, Save, X, AlertCircle } from "lucide-react"
+import { ArrowLeft, School, User, PlusCircle, Trash2, Edit2, Save, X, AlertCircle, QrCode, Download, Check } from "lucide-react"
+import { QRCodeCanvas } from 'qrcode.react'
 
 export default function LocationsView({ navigateTo }) {
   const [formData, setFormData] = useState({
@@ -13,8 +14,85 @@ export default function LocationsView({ navigateTo }) {
   });
   const [editingId, setEditingId] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [qrLocation, setQrLocation] = useState(null);
 
   const locations = useLiveQuery(() => db.locations.toArray()) || [];
+
+  const downloadQR = (loc) => {
+    const canvas = document.getElementById(`qr-canvas-${loc.id}`);
+    if (!canvas) return;
+    
+    // Create a high-quality sign canvas with background, text and QR combined
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = 600;
+    finalCanvas.height = 800;
+    const ctx = finalCanvas.getContext('2d');
+    
+    // Fill background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+    
+    // Outer border
+    ctx.strokeStyle = '#3b82f6'; // primary theme color
+    ctx.lineWidth = 15;
+    ctx.strokeRect(20, 20, finalCanvas.width - 40, finalCanvas.height - 40);
+    
+    // Inner border
+    ctx.strokeStyle = '#1e3a8a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(35, 35, finalCanvas.width - 70, finalCanvas.height - 70);
+    
+    // Header text
+    ctx.fillStyle = '#1e3a8a';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('S I G R E', finalCanvas.width / 2, 90);
+    
+    ctx.fillStyle = '#6b7280';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText('SISTEMA INTEGRAL DE GESTIÓN DE RECURSOS ESCOLARES', finalCanvas.width / 2, 125);
+    
+    // Decorative divider line
+    ctx.beginPath();
+    ctx.moveTo(80, 155);
+    ctx.lineTo(finalCanvas.width - 80, 155);
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // Classroom Name
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 44px sans-serif';
+    ctx.fillText(loc.name.toUpperCase(), finalCanvas.width / 2, 220);
+    
+    // Responsible Teacher Title
+    ctx.fillStyle = '#4b5563';
+    ctx.font = 'normal 18px sans-serif';
+    ctx.fillText('Docente Responsable:', finalCanvas.width / 2, 275);
+    
+    // Responsible Teacher Name
+    ctx.fillStyle = '#1f2937';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(loc.responsible_name, finalCanvas.width / 2, 310);
+    
+    // Draw the QR Code canvas onto our final canvas
+    ctx.drawImage(canvas, (finalCanvas.width - 320) / 2, 360, 320, 320);
+    
+    // Footer scan instructions
+    ctx.fillStyle = '#6b7280';
+    ctx.font = 'italic 14px sans-serif';
+    ctx.fillText('Escanee este código QR para registrar incidencias o verificar inventario', finalCanvas.width / 2, 730);
+    
+    // Create download link
+    const url = finalCanvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `SIGRE_QR_${loc.name.replace(/\s+/g, '_')}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -213,6 +291,15 @@ export default function LocationsView({ navigateTo }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5" 
+                    onClick={() => setQrLocation(loc)}
+                    title="Ver Código QR"
+                  >
+                    <QrCode className="w-4 h-4" />
+                  </Button>
                   <Button variant="secondary" size="icon" className="h-9 w-9 rounded-lg" onClick={() => handleEdit(loc)}>
                     <Edit2 className="w-4 h-4 text-foreground" />
                   </Button>
@@ -230,6 +317,81 @@ export default function LocationsView({ navigateTo }) {
           </div>
         )}
       </section>
+
+      {/* Elementos ocultos para poder capturar el canvas del QR en alta calidad al descargar */}
+      <div style={{ display: 'none' }}>
+        {locations.map(loc => (
+          <QRCodeCanvas
+            key={loc.id}
+            id={`qr-canvas-${loc.id}`}
+            value={loc.id}
+            size={320}
+            level="H"
+          />
+        ))}
+      </div>
+
+      {/* Modal para visualizar el QR y descargar el letrero */}
+      {qrLocation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setQrLocation(null)} />
+          
+          {/* Card */}
+          <div className="relative w-full max-w-sm bg-card border rounded-3xl shadow-2xl z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 space-y-6">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-lg text-foreground flex items-center gap-2">
+                  <QrCode className="w-5 h-5 text-primary" /> Letrero QR
+                </h4>
+                <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => setQrLocation(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Door sign preview */}
+              <div className="border-4 border-primary rounded-2xl p-5 bg-white text-black flex flex-col items-center text-center shadow-md">
+                <span className="text-primary font-bold text-sm tracking-widest">S I G R E</span>
+                <span className="text-gray-500 font-bold text-[9px] uppercase tracking-wider block mt-0.5">Control de Recursos Escolares</span>
+                
+                <div className="w-full h-px bg-gray-200 my-3" />
+                
+                <h5 className="font-black text-2xl tracking-tight text-gray-900">{qrLocation.name.toUpperCase()}</h5>
+                <p className="text-xs text-gray-500 mt-1">Docente Responsable:</p>
+                <p className="font-bold text-sm text-gray-800">{qrLocation.responsible_name}</p>
+                
+                <div className="mt-4 p-2 bg-white border-2 border-gray-100 rounded-xl">
+                  {/* Visual QR shown inside the modal preview */}
+                  <QRCodeCanvas 
+                    value={qrLocation.id} 
+                    size={160}
+                    level="H"
+                  />
+                </div>
+                
+                <p className="text-[9px] text-gray-400 italic mt-4 px-2">Escanee este código QR para registrar incidencias o verificar inventario</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-2">
+                <Button 
+                  onClick={() => downloadQR(qrLocation)} 
+                  className="w-full h-12 rounded-xl font-bold bg-primary hover:bg-primary/90 flex items-center justify-center gap-2 text-primary-foreground"
+                >
+                  <Download className="w-4 h-4" />
+                  Descargar Letrero Oficial
+                </Button>
+                <Button variant="outline" className="w-full h-11 rounded-xl" onClick={() => setQrLocation(null)}>
+                  Cerrar
+                </Button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

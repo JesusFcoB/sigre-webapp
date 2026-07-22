@@ -9,3 +9,12 @@ db.version(2).stores({
   tickets: '++id, issue_type, description, location_id, sync_status, reported_at',
   vales: '++id, location_id, signatureBase64, signed_at, sync_status'
 });
+
+// v3: Add category field to items
+db.version(3).stores({
+  items: 'id, official_inventory_number, description, condition, location_id, category, sync_status',
+  locations: 'id, name, responsible_name',
+  tickets: '++id, issue_type, description, location_id, sync_status, reported_at',
+  vales: '++id, location_id, signatureBase64, signed_at, sync_status'
+});
+

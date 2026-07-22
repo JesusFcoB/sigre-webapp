@@ -39,7 +39,7 @@ export default function DashboardView({ navigateTo }) {
 
   const handleEditItem = (item) => {
     setEditingItem(item);
-    navigateTo('registration');
+    navigateTo('assets');
   };
 
   const handleDeleteItem = async (id) => {

@@ -3,10 +3,13 @@ import DashboardView from './components/views/DashboardView'
 import ScannerView from './components/views/ScannerView'
 import ReportView from './components/views/ReportView'
 import ConciliationView from './components/views/ConciliationView'
-import AssetRegistrationView from './components/views/AssetRegistrationView'
+import AssetsView from './components/views/AssetsView'
+
+
 import ClassroomInventoryView from './components/views/ClassroomInventoryView'
 import LoginView from './components/views/LoginView'
-import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, PackagePlus, LogOut } from 'lucide-react'
+import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut } from 'lucide-react'
+
 import { useStore } from './store/useStore'
 import { syncTicketsToSupabase, syncItemsToSupabase, syncValesToSupabase } from './lib/sync'
 import { db } from './lib/db'
@@ -71,8 +74,9 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardView navigateTo={setActiveTab} />
-      case 'registration':
-        return <AssetRegistrationView />
+      case 'assets':
+        return <AssetsView />
+
       case 'scanner':
         return <ScannerView navigateTo={setActiveTab} />
       case 'report':
@@ -128,12 +132,13 @@ function App() {
           )}
           {role !== 'profesor' && (
             <NavItem 
-              icon={<PackagePlus className="w-5 h-5" />} 
-              label="Altas" 
-              isActive={activeTab === 'registration'} 
-              onClick={() => setActiveTab('registration')} 
+              icon={<Package className="w-5 h-5" />} 
+              label="Bienes" 
+              isActive={activeTab === 'assets'} 
+              onClick={() => setActiveTab('assets')} 
             />
           )}
+
           <NavItem 
             icon={<QrCode className="w-6 h-6" />} 
             label="Escáner" 
@@ -158,7 +163,8 @@ function App() {
         {/* Desktop Sidebar / Topbar equivalent (simplified for prototype) */}
         <div className="hidden md:flex max-w-5xl mx-auto justify-center gap-4 py-4 bg-card rounded-t-3xl border-t border-x px-8 mt-auto">
            {role !== 'profesor' && <ButtonNavDesktop icon={<LayoutDashboard />} label="Dashboard" isActive={activeTab==='dashboard'} onClick={()=>setActiveTab('dashboard')} />}
-           {role !== 'profesor' && <ButtonNavDesktop icon={<PackagePlus />} label="Alta Bienes" isActive={activeTab==='registration'} onClick={()=>setActiveTab('registration')} />}
+           {role !== 'profesor' && <ButtonNavDesktop icon={<Package />} label="Bienes" isActive={activeTab==='assets'} onClick={()=>setActiveTab('assets')} />}
+
            <ButtonNavDesktop icon={<QrCode />} label="Escáner QR" isActive={activeTab==='scanner'} onClick={()=>setActiveTab('scanner')} />
            <ButtonNavDesktop icon={<AlertCircle />} label="Reportar" isActive={activeTab==='report'} onClick={()=>setActiveTab('report')} />
            <ButtonNavDesktop icon={<FileSpreadsheet />} label="Conciliación" isActive={activeTab==='conciliation'} onClick={()=>setActiveTab('conciliation')} />
