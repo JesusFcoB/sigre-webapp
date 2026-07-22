@@ -101,10 +101,8 @@ export default function ClassroomInventoryView({ navigateTo }) {
                 <div className="flex-1 overflow-hidden">
                   <p className="font-bold text-base truncate">{item.description}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary" className="text-[10px] font-semibold bg-muted text-muted-foreground">
-                      {item.serial_number || 'S/N'}
-                    </Badge>
-                    <span className="text-xs font-medium uppercase text-muted-foreground">• {item.condition}</span>
+                    <p className="text-xs text-muted-foreground">{item.serial_number || 'S/N'} • {item.condition}</p>
+                    {item.quantity && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">Cant: {item.quantity}</span>}
                   </div>
                 </div>
               </div>

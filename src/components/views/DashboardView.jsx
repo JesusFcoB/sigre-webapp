@@ -225,9 +225,12 @@ export default function DashboardView({ navigateTo }) {
                       )}
                       <div className="flex-1 overflow-hidden">
                         <p className="font-bold text-base truncate text-foreground">{item.description}</p>
-                        <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                          {item.serial_number || 'S/N'} • {item.condition}
-                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-muted-foreground font-medium">
+                            {item.serial_number || 'S/N'} • {item.condition}
+                          </p>
+                          {item.quantity && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">Cant: {item.quantity}</span>}
+                        </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         <Badge variant={item.sync_status === 'synced' ? 'success' : 'outline'} className="text-[10px] font-bold">

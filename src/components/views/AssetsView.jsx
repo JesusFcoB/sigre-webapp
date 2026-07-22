@@ -29,7 +29,7 @@ const CATEGORIES = ["Mobiliario", "Electrónico", "Didáctico", "Otro"]
 const conditionMeta = (val) => CONDITIONS.find(c => c.value === val) || { label: val || "—", color: "bg-gray-100 text-gray-600" }
 
 function emptyForm() {
-  return { description: "", condition: "", location_id: "", category: "", serial_number: "", photoBase64: "" }
+  return { description: "", condition: "", location_id: "", category: "", serial_number: "", photoBase64: "", quantity: 1 }
 }
 
 // ─── Main component ────────────────────────────────────────────
@@ -66,7 +66,8 @@ export default function AssetsView() {
         location_id: editingItem.location_id || "",
         category: editingItem.category || "",
         serial_number: editingItem.serial_number || "",
-        photoBase64: editingItem.photoBase64 || ""
+        photoBase64: editingItem.photoBase64 || "",
+        quantity: editingItem.quantity || 1
       })
       setFormError("")
       setDrawerOpen(true)
@@ -83,10 +84,14 @@ export default function AssetsView() {
 
   const filteredItems = useMemo(() => {
     return allItems.filter(item => {
-      const matchSearch    = !search || item.description?.toLowerCase().includes(search.toLowerCase()) || item.serial_number?.toLowerCase().includes(search.toLowerCase())
-      const matchLocation  = !filterLocation || item.location_id === filterLocation
+      const matchSearch    = !search || (item.description || '').toLowerCase().includes(search.toLowerCase()) || (item.serial_number || '').toLowerCase().includes(search.toLowerCase())
+      
+      // Permitir que si item.location_id es texto libre (importado de excel) empate con el nombre del salón del filtro
+      const locFilterName = locationMap[filterLocation]?.name?.toLowerCase();
+      const matchLocation  = !filterLocation || item.location_id === filterLocation || (locFilterName && (item.location_id || '').toLowerCase() === locFilterName);
+      
       const matchCondition = filterConditions.length === 0 || filterConditions.includes(item.condition)
-      const matchCategory  = !filterCategory || item.category === filterCategory
+      const matchCategory  = !filterCategory || item.category === filterCategory || (!item.category && filterCategory === "Otro")
       return matchSearch && matchLocation && matchCondition && matchCategory
     })
   }, [allItems, search, filterLocation, filterConditions, filterCategory])
@@ -96,13 +101,15 @@ export default function AssetsView() {
     const byLocation = {}
     const byCondition = {}
     sameDesc.forEach(i => {
+      const q = i.quantity || 1
       const locName = locationMap[i.location_id]?.name || "Sin aula"
       const resp    = locationMap[i.location_id]?.responsible_name || "—"
       if (!byLocation[locName]) byLocation[locName] = { count: 0, responsible: resp }
-      byLocation[locName].count++
-      byCondition[i.condition] = (byCondition[i.condition] || 0) + 1
+      byLocation[locName].count += q
+      byCondition[i.condition] = (byCondition[i.condition] || 0) + q
     })
-    return { total: sameDesc.length, byLocation, byCondition }
+    const totalQty = sameDesc.reduce((acc, i) => acc + (i.quantity || 1), 0)
+    return { total: totalQty, byLocation, byCondition }
   }
 
   const toggleCondition = (val) =>
@@ -113,7 +120,7 @@ export default function AssetsView() {
   const openEdit = (item, e) => {
     e.stopPropagation()
     setEditingId(item.id)
-    setFormData({ description: item.description || "", condition: item.condition || "", location_id: item.location_id || "", category: item.category || "", serial_number: item.serial_number || "", photoBase64: item.photoBase64 || "" })
+    setFormData({ description: item.description || "", condition: item.condition || "", location_id: item.location_id || "", category: item.category || "", serial_number: item.serial_number || "", photoBase64: item.photoBase64 || "", quantity: item.quantity || 1 })
     setFormError("")
     setDrawerOpen(true)
   }
@@ -136,9 +143,9 @@ export default function AssetsView() {
     }
     try {
       if (editingId) {
-        await db.items.update(editingId, { description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category, serial_number: serial || null, photoBase64: formData.photoBase64 || null })
+        await db.items.update(editingId, { description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category, serial_number: serial || null, photoBase64: formData.photoBase64 || null, quantity: Number(formData.quantity) || 1 })
       } else {
-        await db.items.add({ id: crypto.randomUUID(), description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category || null, serial_number: serial || null, photoBase64: formData.photoBase64 || null, sync_status: "pending_create" })
+        await db.items.add({ id: crypto.randomUUID(), description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category || null, serial_number: serial || null, photoBase64: formData.photoBase64 || null, sync_status: "pending_create", quantity: Number(formData.quantity) || 1 })
       }
       setDrawerOpen(false)
       if (navigator.onLine) syncItemsToSupabase()
@@ -164,7 +171,7 @@ export default function AssetsView() {
     const rows = filteredItems.map(i => ({
       "Descripción": i.description || "", "Categoría": i.category || "—",
       "Estado": conditionMeta(i.condition).label, "Salón": locationMap[i.location_id]?.name || "—",
-      "Responsable": locationMap[i.location_id]?.responsible_name || "—", "No. Serie": i.serial_number || "—"
+      "Responsable": locationMap[i.location_id]?.responsible_name || "—", "No. Serie": i.serial_number || "—", "Cantidad": i.quantity || 1
     }))
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Listado")
     const byState = {}
@@ -183,8 +190,8 @@ export default function AssetsView() {
     doc.setFontSize(9); doc.setTextColor(100); doc.text(`Generado: ${date}   Filtros: ${buildFilterLabel()}`, 14, 22)
     autoTable(doc, {
       startY: 28,
-      head: [["Descripción","Categoría","Estado","Salón","Responsable","No. Serie"]],
-      body: filteredItems.map(i => [i.description||"", i.category||"—", conditionMeta(i.condition).label, locationMap[i.location_id]?.name||"—", locationMap[i.location_id]?.responsible_name||"—", i.serial_number||"—"]),
+      head: [["Descripción","Categoría","Estado","Salón","Responsable","No. Serie","Cant."]],
+      body: filteredItems.map(i => [i.description||"", i.category||"—", conditionMeta(i.condition).label, locationMap[i.location_id]?.name||"—", locationMap[i.location_id]?.responsible_name||"—", i.serial_number||"—", i.quantity||1]),
       styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [59,130,246] }, alternateRowStyles: { fillColor: [245,247,250] }
     })
     doc.save(`SIGRE_Bienes_${date.replace(/\//g,"-")}.pdf`)
@@ -303,6 +310,7 @@ export default function AssetsView() {
                   <p className="font-bold text-sm text-foreground truncate">{item.description}</p>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Cant: {item.quantity || 1}</span>
                     {item.category && <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{item.category}</span>}
                     {loc && <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">📍 {loc.name}</span>}
                   </div>
@@ -363,12 +371,18 @@ export default function AssetsView() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-foreground">Salón / Ubicación *</label>
-                  <Select value={formData.location_id} onChange={e => setFormData(p => ({ ...p, location_id: e.target.value }))} required>
-                    <option value="" disabled>Seleccionar salón…</option>
-                    {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name} — {loc.responsible_name}</option>)}
-                  </Select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-foreground">Salón / Ubicación *</label>
+                    <Select value={formData.location_id} onChange={e => setFormData(p => ({ ...p, location_id: e.target.value }))} required>
+                      <option value="" disabled>Seleccionar salón…</option>
+                      {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name} — {loc.responsible_name}</option>)}
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-foreground">Cantidad *</label>
+                    <Input type="number" name="quantity" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} min="1" required className="h-10" />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-foreground">Número de Serie / Etiqueta</label>
@@ -426,6 +440,7 @@ export default function AssetsView() {
                     <h3 className="font-bold text-lg text-foreground leading-tight">{detailItem.description}</h3>
                     <div className="flex gap-1.5 mt-1 flex-wrap">
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${meta.color}`}>{meta.label}</span>
+                      <span className="text-xs bg-primary/10 text-primary font-bold px-2.5 py-1 rounded-full">Cant: {detailItem.quantity || 1}</span>
                       {detailItem.category && <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{detailItem.category}</span>}
                     </div>
                   </div>

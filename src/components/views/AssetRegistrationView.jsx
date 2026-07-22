@@ -21,7 +21,8 @@ export default function AssetRegistrationView() {
     condition: '',
     location_id: '',
     serial_number: '',
-    photoBase64: ''
+    photoBase64: '',
+    quantity: 1
   });
 
   // Fetch pending items to show in the list
@@ -79,7 +80,8 @@ export default function AssetRegistrationView() {
           condition: formData.condition,
           location_id: formData.location_id,
           serial_number: serialNumber || null,
-          photoBase64: formData.photoBase64 || null
+          photoBase64: formData.photoBase64 || null,
+          quantity: Number(formData.quantity) || 1
         });
       } else {
         const newItem = {
@@ -89,7 +91,8 @@ export default function AssetRegistrationView() {
           location_id: formData.location_id,
           serial_number: serialNumber || null,
           photoBase64: formData.photoBase64 || null,
-          sync_status: 'pending_create'
+          sync_status: 'pending_create',
+          quantity: Number(formData.quantity) || 1
         };
         await db.items.add(newItem);
       }
@@ -103,7 +106,8 @@ export default function AssetRegistrationView() {
         condition: '',
         location_id: '',
         serial_number: '',
-        photoBase64: ''
+        photoBase64: '',
+        quantity: 1
       });
 
       if (navigator.onLine) {
@@ -123,7 +127,8 @@ export default function AssetRegistrationView() {
       condition: item.condition || '',
       location_id: item.location_id || '',
       serial_number: item.serial_number || '',
-      photoBase64: item.photoBase64 || ''
+      photoBase64: item.photoBase64 || '',
+      quantity: item.quantity || 1
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -136,7 +141,7 @@ export default function AssetRegistrationView() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ description: '', condition: '', location_id: '', serial_number: '', photoBase64: '' });
+    setFormData({ description: '', condition: '', location_id: '', serial_number: '', photoBase64: '', quantity: 1 });
   };
 
   if (submitted) {
@@ -205,6 +210,19 @@ export default function AssetRegistrationView() {
               value={formData.description} 
               onChange={handleInputChange} 
               placeholder="Ej. Minisplit Mirage 2T..." 
+              required 
+              className="h-12" 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-foreground">Cantidad</label>
+            <Input 
+              type="number"
+              name="quantity" 
+              value={formData.quantity} 
+              onChange={handleInputChange} 
+              min="1"
               required 
               className="h-12" 
             />
@@ -318,9 +336,12 @@ export default function AssetRegistrationView() {
                   )}
                   <div className="overflow-hidden pr-3">
                     <p className="font-bold text-sm truncate">{item.description}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {item.serial_number || 'Sin serie'} • {item.condition}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-muted-foreground">
+                        {item.serial_number || 'Sin serie'} • {item.condition}
+                      </p>
+                      {item.quantity && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">Cant: {item.quantity}</span>}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
