@@ -5,11 +5,18 @@ import { Badge } from "@/components/ui/badge"
 import { QrCode, Camera, AlertCircle, FileText, CheckCircle2, MapPin, UserCircle } from "lucide-react"
 import BarcodeScanner from '@/components/ui/BarcodeScanner'
 import { useStore } from '@/store/useStore'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '@/lib/db'
 
 export default function ScannerView({ navigateTo }) {
   const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState(null);
   const setSelectedLocation = useStore(state => state.setSelectedLocation);
+
+  const locationInfo = useLiveQuery(
+    () => scannedData ? db.locations.get(scannedData) : null,
+    [scannedData]
+  );
 
   const handleScan = (data) => {
     // Para prototipo: extraemos algo del texto o simplemente mostramos éxito
@@ -76,7 +83,7 @@ export default function ScannerView({ navigateTo }) {
             <div className="bg-primary p-4 text-primary-foreground flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                <span className="font-bold text-lg">{scannedData}</span>
+                <span className="font-bold text-lg">{locationInfo ? locationInfo.name : scannedData}</span>
               </div>
               <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0">
                 Ubicación
@@ -89,7 +96,7 @@ export default function ScannerView({ navigateTo }) {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">Responsable del Espacio</p>
-                  <p className="font-bold text-foreground text-lg">Prof. Designado</p>
+                  <p className="font-bold text-foreground text-lg">{locationInfo ? locationInfo.responsible_name : 'No Asignado'}</p>
                 </div>
               </div>
             </CardContent>

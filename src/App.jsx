@@ -8,6 +8,9 @@ import ClassroomInventoryView from './components/views/ClassroomInventoryView'
 import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, PackagePlus } from 'lucide-react'
 import { useStore } from './store/useStore'
 import { syncTicketsToSupabase, syncItemsToSupabase, syncValesToSupabase } from './lib/sync'
+import { db } from './lib/db'
+import LocationsView from './components/views/LocationsView'
+
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const setOnlineStatus = useStore((state) => state.setOnlineStatus)
@@ -37,6 +40,27 @@ function App() {
     }
   }, [setOnlineStatus])
 
+  // Seed default locations if empty
+  useEffect(() => {
+    const seedLocations = async () => {
+      try {
+        const count = await db.locations.count();
+        if (count === 0) {
+          await db.locations.bulkAdd([
+            { id: 'aula_1a', name: 'Aula 1A', responsible_name: 'Prof. Juan Pérez' },
+            { id: 'aula_medios', name: 'Aula de Medios', responsible_name: 'Profa. María López' },
+            { id: 'direccion', name: 'Dirección', responsible_name: 'Director Escolar' },
+            { id: 'almacen', name: 'Almacén', responsible_name: 'Encargado de Materiales' }
+          ]);
+          console.log('Ubicaciones predeterminadas insertadas.');
+        }
+      } catch (err) {
+        console.error('Error inicializando ubicaciones:', err);
+      }
+    };
+    seedLocations();
+  }, []);
+
   const renderView = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -51,6 +75,8 @@ function App() {
         return <ConciliationView />
       case 'classroom_inventory':
         return <ClassroomInventoryView navigateTo={setActiveTab} />
+      case 'locations':
+        return <LocationsView navigateTo={setActiveTab} />
       default:
         return <DashboardView />
     }

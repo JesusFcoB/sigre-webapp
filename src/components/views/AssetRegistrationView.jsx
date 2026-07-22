@@ -29,6 +29,8 @@ export default function AssetRegistrationView() {
     () => db.items.where('sync_status').equals('pending_create').reverse().sortBy('id')
   );
 
+  const locations = useLiveQuery(() => db.locations.toArray()) || [];
+
   const editingItem = useStore(state => state.editingItem);
   const setEditingItem = useStore(state => state.setEditingItem);
 
@@ -233,10 +235,9 @@ export default function AssetRegistrationView() {
                 required
               >
                 <option value="" disabled>Seleccionar...</option>
-                <option value="aula_1a">Aula 1A</option>
-                <option value="aula_medios">Aula de Medios</option>
-                <option value="direccion">Dirección</option>
-                <option value="almacen">Almacén</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
               </Select>
             </div>
           </div>

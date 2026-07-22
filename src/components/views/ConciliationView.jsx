@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { UploadCloud, FileSpreadsheet, Check, AlertTriangle, AlertCircle, Loader2 } from "lucide-react"
+import { UploadCloud, FileSpreadsheet, Check, AlertTriangle, AlertCircle, Loader2, Download } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { db } from '@/lib/db'
 
@@ -120,6 +120,38 @@ export default function ConciliationView() {
     setSobrantes([]);
   };
 
+  const handleExportExcel = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+
+      const formatDataForExcel = (list) => {
+        return list.map(item => ({
+          'Folio / Serie': item.folio,
+          'Artículo': item.articulo,
+          'Ubicación Esperada': item.uEsperada,
+          'Ubicación Real': item.uReal,
+          'Estatus': item.status
+        }));
+      };
+
+      const wsCoincidencias = XLSX.utils.json_to_sheet(formatDataForExcel(coincidencias));
+      const wsFaltantes = XLSX.utils.json_to_sheet(formatDataForExcel(faltantes));
+      const wsSobrantes = XLSX.utils.json_to_sheet(formatDataForExcel(sobrantes));
+
+      XLSX.utils.book_append_sheet(wb, wsCoincidencias, 'Coinciden');
+      XLSX.utils.book_append_sheet(wb, wsFaltantes, 'Faltan');
+      XLSX.utils.book_append_sheet(wb, wsSobrantes, 'Sobran');
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      const baseName = fileData.name.replace(/\.[^/.]+$/, "");
+      const fileName = `Conciliacion_${baseName}_${dateStr}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+    } catch (error) {
+      console.error("Error al exportar Excel:", error);
+      alert("Hubo un error al generar el archivo Excel.");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 pb-24">
       {/* Header */}
@@ -164,7 +196,7 @@ export default function ConciliationView() {
       ) : (
         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
           
-          <div className="flex items-center justify-between bg-card border rounded-xl p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-card border rounded-xl p-4 shadow-sm gap-4">
             <div className="flex items-center gap-3">
               <div className="bg-success/20 p-2 rounded-lg">
                 <FileSpreadsheet className="w-6 h-6 text-success" />
@@ -174,9 +206,20 @@ export default function ConciliationView() {
                 <p className="text-xs text-muted-foreground">Procesado con éxito • {fileData.total} registros evaluados</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={resetConciliation} className="text-muted-foreground">
-              Limpiar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportExcel} 
+                className="text-primary border-primary/20 hover:bg-primary/10 font-bold flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Descargar Resultados
+              </Button>
+              <Button variant="ghost" size="sm" onClick={resetConciliation} className="text-muted-foreground">
+                Limpiar
+              </Button>
+            </div>
           </div>
 
           <Tabs defaultValue="coincidencias" className="w-full">
