@@ -26,3 +26,11 @@ db.version(4).stores({
   vales: '++id, person_name, start_date, end_date, sync_status'
 });
 
+// v5: Add sync_status index to locations for bidirectional sync
+db.version(5).stores({
+  items: 'id, official_inventory_number, description, condition, location_id, category, sync_status, status',
+  locations: 'id, name, responsible_name, sync_status',
+  tickets: '++id, issue_type, description, location_id, sync_status, reported_at',
+  vales: '++id, person_name, start_date, end_date, sync_status'
+});
+
