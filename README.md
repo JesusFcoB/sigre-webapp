@@ -14,6 +14,9 @@ Una Aplicación Web Progresiva (PWA) enfocada en la gestión de inventario, mant
 *   **Módulo Independiente de "Bajas":** Proceso rápido y seguro para descartar artículos (por obsolescencia, daño o robo), registrando el motivo, ubicación de resguardo y evidencia fotográfica del artículo desechado, conservándolo en una pestaña histórica separada.
 *   **Semáforo de Mantenimiento Preventivo:** Permite asignar una frecuencia de revisión (en meses) a los equipos (ej. aires acondicionados). El sistema calcula dinámicamente y muestra un semáforo visual (Verde, Amarillo, Rojo) alertando cuando un equipo necesita servicio técnico.
 
+*   **Conexión a la Nube (Supabase):** Cuenta con una base de datos PostgreSQL remota y segura en la nube.
+*   **Sincronización Bidireccional Automática:** Sube automáticamente los registros creados sin internet y descarga las novedades desde Supabase en cuanto se detecta conexión, usando manejo de conflictos.
+
 ## ¿Cómo ejecutar el proyecto?
 
 ### Opción 1: Ejecución Automática (Recomendada en Windows)
@@ -44,11 +47,10 @@ Si prefieres usar la terminal (Símbolo del sistema, PowerShell, o bash), sigue 
 ## Tecnologías utilizadas (Stack Tecnológico)
 *   **Frontend:** React.js con Vite, Tailwind CSS y shadcn/ui.
 *   **Motor Offline:** Dexie.js (para base de datos local) y Zustand (manejo de estados).
-*   **Componentes Adicionales:** `html5-qrcode` para lectura de cámaras, `SheetJS (xlsx)` para parseo de Excels, y `Recharts` para las métricas visuales.
+*   **Conexión Remota:** `@supabase/supabase-js`.
+*   **Componentes Adicionales:** `html5-qrcode` para lectura de cámaras, `SheetJS (xlsx)` para parseo de Excels, `Recharts` para las métricas visuales, y `jsPDF` para exportación de vales.
 
 ---
-## ¿Qué falta por implementar? (Próximos Pasos - Fase 3)
-*   **Conexión Real a Supabase:** Configurar las variables de entorno para apuntar a un proyecto real en la nube de Supabase.
-*   **Sincronización Bidireccional:** Asegurar que los datos locales (Offline) y de la nube (Online) estén en sintonía mediante un esquema robusto de sincronización de Dexie a PostgreSQL.
-*   **Gestión de Usuarios Nube:** Migrar el Auth quemado localmente al sistema de Autenticación de Supabase (Admin vs Capturista).
+## ¿Qué falta por implementar? (Próximos Pasos - Fase 4: Despliegue)
 *   **Despliegue a Producción (Vercel/Netlify):** Empaquetar y subir la PWA a la nube para su acceso universal mediante URL pública.
+*   **Gestión de Usuarios Nube (Opcional):** Migrar el Auth quemado localmente al sistema de Autenticación de Supabase (Admin vs Capturista) para mayor estrictez de cuentas.
