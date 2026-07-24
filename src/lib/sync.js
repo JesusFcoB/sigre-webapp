@@ -14,6 +14,7 @@ function mapLocalToRemote(tableName, data) {
     delete mapped.discard_photoBase64;
   } else if (tableName === 'tickets') {
     if ('photoBase64' in mapped) { mapped.image = mapped.photoBase64; delete mapped.photoBase64; }
+    if (mapped.location_id === 'temp-location-id') mapped.location_id = null;
   } else if (tableName === 'vales') {
     if ('signatureBase64' in mapped) { mapped.signature_base64 = mapped.signatureBase64; delete mapped.signatureBase64; }
     // En local vales usan item_id, en remote la DB usa un JSONB de items, adaptémoslo si es necesario:
