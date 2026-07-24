@@ -19,7 +19,8 @@ export default function ValesView() {
   })
   
   const vales = useLiveQuery(() => db.vales.toArray()) || []
-  const items = useLiveQuery(() => db.items.where('status').notEqual('discarded').toArray()) || []
+  const allItems = useLiveQuery(() => db.items.toArray()) || []
+  const items = useMemo(() => allItems.filter(i => i.status !== 'discarded'), [allItems])
   const locationMap = useLiveQuery(async () => {
     const locs = await db.locations.toArray()
     const map = {}

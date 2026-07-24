@@ -1,28 +1,60 @@
 import { db } from './db'
 import { supabase } from './supabase'
 
-// Función auxiliar para saber si estamos usando el placeholder
 const isMocking = supabase.supabaseUrl.includes('placeholder');
+
+function mapLocalToRemote(tableName, data) {
+  const mapped = { ...data };
+  if (tableName === 'items') {
+    if ('serial_number' in mapped) { mapped.official_inventory_number = mapped.serial_number; delete mapped.serial_number; }
+    if ('photoBase64' in mapped) { mapped.image = mapped.photoBase64; delete mapped.photoBase64; }
+    if ('discard_reason' in mapped) { mapped.disposal_reason = mapped.discard_reason; delete mapped.discard_reason; }
+    if ('discard_date' in mapped) { mapped.disposal_date = mapped.discard_date; delete mapped.discard_date; }
+    delete mapped.discard_location;
+    delete mapped.discard_photoBase64;
+  } else if (tableName === 'tickets') {
+    if ('photoBase64' in mapped) { mapped.image = mapped.photoBase64; delete mapped.photoBase64; }
+  } else if (tableName === 'vales') {
+    if ('signatureBase64' in mapped) { mapped.signature_base64 = mapped.signatureBase64; delete mapped.signatureBase64; }
+    // En local vales usan item_id, en remote la DB usa un JSONB de items, adaptémoslo si es necesario:
+    if ('item_id' in mapped) {
+       mapped.items = [mapped.item_id]; // Convertir al schema de Supabase (espera un array)
+       delete mapped.item_id;
+    }
+  }
+  return mapped;
+}
+
+function mapRemoteToLocal(tableName, data) {
+  const mapped = { ...data };
+  if (tableName === 'items') {
+    if ('official_inventory_number' in mapped) { mapped.serial_number = mapped.official_inventory_number; delete mapped.official_inventory_number; }
+    if ('image' in mapped) { mapped.photoBase64 = mapped.image; delete mapped.image; }
+    if ('disposal_reason' in mapped) { mapped.discard_reason = mapped.disposal_reason; delete mapped.disposal_reason; }
+    if ('disposal_date' in mapped) { mapped.discard_date = mapped.disposal_date; delete mapped.disposal_date; }
+  } else if (tableName === 'tickets') {
+    if ('image' in mapped) { mapped.photoBase64 = mapped.image; delete mapped.image; }
+  } else if (tableName === 'vales') {
+    if ('signature_base64' in mapped) { mapped.signatureBase64 = mapped.signature_base64; delete mapped.signature_base64; }
+    if (mapped.items && Array.isArray(mapped.items) && mapped.items.length > 0) {
+       mapped.item_id = mapped.items[0];
+       delete mapped.items;
+    }
+  }
+  return mapped;
+}
 
 export async function syncAll() {
   console.log("Iniciando sincronización bidireccional...");
-  if (isMocking) {
-    console.log("[MOCK] Sincronización omitida (Credenciales de Supabase no configuradas).");
-    return { success: false, message: "Modo Local" };
-  }
-
-  if (!navigator.onLine) {
-    return { success: false, message: "Sin conexión" };
-  }
+  if (isMocking) return { success: false, message: "Modo Local" };
+  if (!navigator.onLine) return { success: false, message: "Sin conexión" };
 
   try {
-    // 1. PUSH local changes to Supabase
     await pushTable('locations');
     await pushTable('items');
     await pushTable('tickets');
     await pushTable('vales');
 
-    // 2. PULL remote changes from Supabase
     await pullTable('locations');
     await pullTable('items');
     await pullTable('tickets');
@@ -40,7 +72,6 @@ async function pushTable(tableName) {
   const table = db[tableName];
   if (!table) return;
 
-  // Fix missing sync_status for legacy or seeded records
   const allRecords = await table.toArray();
   for (const record of allRecords) {
     if (!record.sync_status) {
@@ -48,21 +79,18 @@ async function pushTable(tableName) {
     }
   }
 
-  // Push Creates
   const pendingCreates = await table.where('sync_status').equals('pending_create').or('sync_status').equals('pending').toArray();
   for (const record of pendingCreates) {
     const { id, sync_status, ...data } = record;
-    
-    // For tickets and vales (SERIAL), omit ID so Supabase generates it. 
-    // For items and locations (UUID), include the ID.
     const insertData = (tableName === 'tickets' || tableName === 'vales') ? data : { id, ...data };
+    const remoteData = mapLocalToRemote(tableName, insertData);
     
-    const { data: insertedData, error } = await supabase.from(tableName).insert([insertData]).select();
+    const { data: insertedData, error } = await supabase.from(tableName).insert([remoteData]).select();
     
     if (!error && insertedData && insertedData.length > 0) {
       if (tableName === 'tickets' || tableName === 'vales') {
-        await table.delete(id); // Borrar ID local temporal
-        await table.put({ ...insertedData[0], sync_status: 'synced' }); // Guardar ID real de Supabase
+        await table.delete(id); 
+        await table.put({ ...mapRemoteToLocal(tableName, insertedData[0]), sync_status: 'synced' }); 
       } else {
         await table.update(id, { sync_status: 'synced' });
       }
@@ -71,11 +99,11 @@ async function pushTable(tableName) {
     }
   }
 
-  // Push Updates
   const pendingUpdates = await table.where('sync_status').equals('pending_update').toArray();
   for (const record of pendingUpdates) {
     const { id, sync_status, ...data } = record;
-    const { error } = await supabase.from(tableName).update(data).eq('id', id);
+    const remoteData = mapLocalToRemote(tableName, data);
+    const { error } = await supabase.from(tableName).update(remoteData).eq('id', id);
     if (!error) {
       await table.update(id, { sync_status: 'synced' });
     } else {
@@ -83,12 +111,11 @@ async function pushTable(tableName) {
     }
   }
 
-  // Push Deletes
   const pendingDeletes = await table.where('sync_status').equals('pending_delete').toArray();
   for (const record of pendingDeletes) {
     const { error } = await supabase.from(tableName).delete().eq('id', record.id);
     if (!error) {
-      await table.delete(record.id); // Borrar localmente de Dexie
+      await table.delete(record.id); 
     } else {
       console.error(`Error push delete ${tableName}:`, error);
     }
@@ -113,10 +140,10 @@ async function pullTable(tableName) {
 
     const toPut = [];
     for (const remoteRecord of data) {
-      const localRecord = localRecordsMap.get(remoteRecord.id);
-      // Solo sobrescribimos si no hay cambios locales pendientes
+      const localData = mapRemoteToLocal(tableName, remoteRecord);
+      const localRecord = localRecordsMap.get(localData.id);
       if (!localRecord || localRecord.sync_status === 'synced') {
-        toPut.push({ ...remoteRecord, sync_status: 'synced' });
+        toPut.push({ ...localData, sync_status: 'synced' });
       }
     }
 
@@ -124,7 +151,6 @@ async function pullTable(tableName) {
       await table.bulkPut(toPut);
     }
     
-    // Si hay un registro local 'synced' que ya no existe en la nube, lo borramos localmente
     const remoteIds = new Set(data.map(r => r.id));
     const toDelete = [];
     localRecordsMap.forEach((localRecord, id) => {
@@ -138,7 +164,6 @@ async function pullTable(tableName) {
   }
 }
 
-// Mantener compatibilidad con llamadas viejas
 export const syncItemsToSupabase = syncAll;
 export const syncTicketsToSupabase = syncAll;
 export const syncValesToSupabase = syncAll;
