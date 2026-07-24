@@ -2,14 +2,17 @@
 
 Una Aplicación Web Progresiva (PWA) enfocada en la gestión de inventario, mantenimiento y control de recursos en planteles escolares. Diseñada con un enfoque "Offline-First" para operar sin problemas en zonas con conectividad limitada.
 
-## Características Principales
+## Características Principales (Implementadas hasta ahora)
 
 *   **100% Offline-First:** Los profesores y directivos pueden seguir trabajando sin internet gracias a la base de datos local en el navegador (IndexedDB / Dexie.js).
 *   **Sincronización Automática:** Cuando el dispositivo detecta conexión Wi-Fi, envía automáticamente los datos locales a la nube (Supabase).
+*   **Sistema de Cuentas y Roles:** Control de acceso mediante roles. El "Director" (Admin) tiene control total (editar, eliminar, dar de baja), mientras que el "Capturista/Invitado" solo puede agregar nuevos registros de manera segura.
 *   **Altas Rápidas:** Registro ágil de bienes mediante toma de fotografía (cámara del dispositivo) y captura de códigos de barras (escáner).
-*   **Módulo de Reportes:** Permite reportar incidencias (como fallas en aires acondicionados) escaneando el código QR del salón.
+*   **Módulo de Reportes de Incidencias:** Permite reportar incidencias (como fallas en aires acondicionados) escaneando el código QR del salón.
 *   **Módulo de Conciliación Inteligente:** Procesa archivos Excel locales y compara el inventario oficial contra lo que realmente existe en el plantel, identificando "Faltantes", "Sobrantes" o discrepancias físicas.
-*   **Vales de Resguardo:** Genera listas por aula y permite que el responsable firme autógrafamente el vale en la pantalla de su celular.
+*   **Módulo de Vales de Resguardo:** Permite generar asignaciones formales de bienes a maestros u operativos. Genera automáticamente un documento PDF listo para imprimir o enviar con firma autógrafa digital.
+*   **Módulo Independiente de "Bajas":** Proceso rápido y seguro para descartar artículos (por obsolescencia, daño o robo), registrando el motivo, ubicación de resguardo y evidencia fotográfica del artículo desechado, conservándolo en una pestaña histórica separada.
+*   **Semáforo de Mantenimiento Preventivo:** Permite asignar una frecuencia de revisión (en meses) a los equipos (ej. aires acondicionados). El sistema calcula dinámicamente y muestra un semáforo visual (Verde, Amarillo, Rojo) alertando cuando un equipo necesita servicio técnico.
 
 ## ¿Cómo ejecutar el proyecto?
 
