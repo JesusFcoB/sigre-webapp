@@ -419,7 +419,7 @@ export default function AssetsView() {
 
       {/* CRUD Drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
           <div className="relative w-full max-w-lg bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl z-10 max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-4 duration-300">
             <div className="p-5 space-y-5">
@@ -521,7 +521,7 @@ export default function AssetsView() {
         const detail = buildDetail(detailItem)
         const meta   = conditionMeta(detailItem.condition)
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDetailItem(null)} />
             <div className="relative w-full max-w-md bg-card rounded-3xl shadow-2xl z-10 max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-200">
               <div className="p-5 space-y-5">
@@ -648,7 +648,7 @@ export default function AssetsView() {
       })()}
       {/* Baja Modal */}
       {bajaModalOpen && itemToBaja && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setBajaModalOpen(false)} />
           <div className="relative w-full max-w-sm bg-card rounded-3xl shadow-2xl z-10 p-5">
             <h3 className="text-xl font-bold text-destructive mb-2">Dar de Baja</h3>

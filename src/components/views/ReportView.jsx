@@ -82,7 +82,7 @@ export default function ReportView() {
         const newTicket = {
           issue_type: formData.issue_type,
           description: description,
-          location_id: 'temp-location-id',
+          location_id: null,
           photoBase64: formData.photoBase64 || null,
           sync_status: 'pending',
           reported_at: new Date().toISOString()

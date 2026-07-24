@@ -338,7 +338,7 @@ export default function ConciliationView() {
 
       {/* Conflict Resolution Modal */}
       {showConflictModal && coincidencias.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
           <div className="bg-card w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border">
             <div className="bg-muted/50 p-4 border-b">
               <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
