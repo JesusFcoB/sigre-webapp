@@ -161,7 +161,17 @@ export default function LocationsView({ navigateTo }) {
     }
 
     if (window.confirm("¿Seguro que deseas eliminar esta ubicación permanentemente?")) {
-      await db.locations.delete(id);
+      const record = await db.locations.get(id);
+      if (record && (record.sync_status === 'pending_create' || record.sync_status === 'pending')) {
+        await db.locations.delete(id);
+      } else {
+        await db.locations.update(id, { sync_status: 'pending_delete' });
+      }
+      
+      if (navigator.onLine) {
+        import('@/lib/sync').then(s => s.syncAll());
+      }
+      
       // Limpiar edición si se elimina el que se estaba editando
       if (editingId === id) {
         setEditingId(null);

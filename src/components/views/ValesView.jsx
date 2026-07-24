@@ -45,7 +45,13 @@ export default function ValesView() {
 
   const handleDelete = async (id) => {
     if (window.confirm("¿Eliminar este vale?")) {
-      await db.vales.delete(id)
+      const record = await db.vales.get(id);
+      if (record && (record.sync_status === 'pending_create' || record.sync_status === 'pending')) {
+        await db.vales.delete(id);
+      } else {
+        await db.vales.update(id, { sync_status: 'pending_delete' });
+      }
+      if (navigator.onLine) syncValesToSupabase();
     }
   }
 
@@ -79,7 +85,7 @@ export default function ValesView() {
     doc.text("Firma de Conformidad", 105, finalY + 50, { align: "center" })
     doc.text(vale.person_name, 105, finalY + 60, { align: "center" })
     
-    doc.save(`Vale_${vale.person_name.replace(/\s/g, '_')}_${vale.id.slice(0, 5)}.pdf`)
+    doc.save(`Vale_${vale.person_name.replace(/\s/g, '_')}_${String(vale.id).slice(0, 5)}.pdf`)
   }
 
   return (

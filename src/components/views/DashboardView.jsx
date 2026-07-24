@@ -43,8 +43,14 @@ export default function DashboardView({ navigateTo }) {
   };
 
   const handleDeleteItem = async (id) => {
-    if (window.confirm("¿Seguro que deseas eliminar este registro local permanentemente?")) {
-      await db.items.delete(id);
+    if (window.confirm("¿Seguro que deseas eliminar este registro permanente?")) {
+      const record = await db.items.get(id);
+      if (record && (record.sync_status === 'pending_create' || record.sync_status === 'pending')) {
+        await db.items.delete(id);
+      } else {
+        await db.items.update(id, { sync_status: 'pending_delete' });
+      }
+      if (navigator.onLine) { import('@/lib/sync').then(s => s.syncAll()); }
     }
   };
 
@@ -54,8 +60,14 @@ export default function DashboardView({ navigateTo }) {
   };
 
   const handleDeleteTicket = async (id) => {
-    if (window.confirm("¿Seguro que deseas cancelar este reporte local permanentemente?")) {
-      await db.tickets.delete(id);
+    if (window.confirm("¿Seguro que deseas cancelar este reporte permanente?")) {
+      const record = await db.tickets.get(id);
+      if (record && (record.sync_status === 'pending_create' || record.sync_status === 'pending')) {
+        await db.tickets.delete(id);
+      } else {
+        await db.tickets.update(id, { sync_status: 'pending_delete' });
+      }
+      if (navigator.onLine) { import('@/lib/sync').then(s => s.syncAll()); }
     }
   };
 
