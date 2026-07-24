@@ -4,112 +4,133 @@ import { supabase } from './supabase'
 // Función auxiliar para saber si estamos usando el placeholder
 const isMocking = supabase.supabaseUrl.includes('placeholder');
 
-export async function syncTicketsToSupabase() {
-  console.log("Iniciando sincronización de tickets...")
-  
+export async function syncAll() {
+  console.log("Iniciando sincronización bidireccional...");
+  if (isMocking) {
+    console.log("[MOCK] Sincronización omitida (Credenciales de Supabase no configuradas).");
+    return { success: false, message: "Modo Local" };
+  }
+
+  if (!navigator.onLine) {
+    return { success: false, message: "Sin conexión" };
+  }
+
   try {
-    const pendingTickets = await db.tickets.where('sync_status').equals('pending').toArray()
-    
-    if (pendingTickets.length === 0) {
-      return 0; 
-    }
+    // 1. PUSH local changes to Supabase
+    await pushTable('locations');
+    await pushTable('items');
+    await pushTable('tickets');
+    await pushTable('vales');
 
-    console.log(`Encontrados ${pendingTickets.length} tickets pendientes.`)
+    // 2. PULL remote changes from Supabase
+    await pullTable('locations');
+    await pullTable('items');
+    await pullTable('tickets');
+    await pullTable('vales');
 
-    for (const ticket of pendingTickets) {
-      const { id, sync_status, ...ticketData } = ticket;
-
-      if (isMocking) {
-        // Simular latencia de red de 1 segundo para el prototipo
-        await new Promise(resolve => setTimeout(resolve, 800));
-        await db.tickets.update(ticket.id, { sync_status: 'synced' });
-        console.log(`[MOCK] Ticket ${ticket.id} sincronizado exitosamente.`);
-      } else {
-        // Conexión real a Supabase
-        const { error } = await supabase.from('tickets').insert([ticketData])
-        if (error) {
-          console.error("Error al sincronizar ticket a Supabase:", error)
-        } else {
-          await db.tickets.update(ticket.id, { sync_status: 'synced' })
-        }
-      }
-    }
-    
-    return pendingTickets.length;
+    console.log("Sincronización completada exitosamente.");
+    return { success: true, message: "Sincronizado" };
   } catch (error) {
-    console.error("Error crítico durante la sincronización:", error)
-    return 0;
+    console.error("Error crítico durante la sincronización:", error);
+    return { success: false, message: "Error al sincronizar" };
   }
 }
 
-export async function syncItemsToSupabase() {
-  console.log("Iniciando sincronización de bienes (items)...")
-  
-  try {
-    const pendingItems = await db.items.where('sync_status').equals('pending_create').toArray()
+async function pushTable(tableName) {
+  const table = db[tableName];
+  if (!table) return;
+
+  // Push Creates
+  const pendingCreates = await table.where('sync_status').equals('pending_create').or('sync_status').equals('pending').toArray();
+  for (const record of pendingCreates) {
+    const { id, sync_status, ...data } = record;
     
-    if (pendingItems.length === 0) {
-      return 0; 
-    }
-
-    console.log(`Encontrados ${pendingItems.length} bienes pendientes.`)
-
-    for (const item of pendingItems) {
-      const { id, sync_status, ...itemData } = item;
-
-      if (isMocking) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        await db.items.update(item.id, { sync_status: 'synced' });
-        console.log(`[MOCK] Bien ${item.id} sincronizado exitosamente.`);
+    // For tickets and vales (SERIAL), omit ID so Supabase generates it. 
+    // For items and locations (UUID), include the ID.
+    const insertData = (tableName === 'tickets' || tableName === 'vales') ? data : { id, ...data };
+    
+    const { data: insertedData, error } = await supabase.from(tableName).insert([insertData]).select();
+    
+    if (!error && insertedData && insertedData.length > 0) {
+      if (tableName === 'tickets' || tableName === 'vales') {
+        await table.delete(id); // Borrar ID local temporal
+        await table.put({ ...insertedData[0], sync_status: 'synced' }); // Guardar ID real de Supabase
       } else {
-        const { error } = await supabase.from('items').insert([itemData])
-        if (error) {
-          console.error("Error al sincronizar bien a Supabase:", error)
-        } else {
-          await db.items.update(item.id, { sync_status: 'synced' })
-        }
+        await table.update(id, { sync_status: 'synced' });
       }
+    } else {
+      console.error(`Error push create ${tableName}:`, error);
     }
-    
-    return pendingItems.length;
-  } catch (error) {
-    console.error("Error crítico durante la sincronización de bienes:", error)
-    return 0;
+  }
+
+  // Push Updates
+  const pendingUpdates = await table.where('sync_status').equals('pending_update').toArray();
+  for (const record of pendingUpdates) {
+    const { id, sync_status, ...data } = record;
+    const { error } = await supabase.from(tableName).update(data).eq('id', id);
+    if (!error) {
+      await table.update(id, { sync_status: 'synced' });
+    } else {
+      console.error(`Error push update ${tableName}:`, error);
+    }
+  }
+
+  // Push Deletes
+  const pendingDeletes = await table.where('sync_status').equals('pending_delete').toArray();
+  for (const record of pendingDeletes) {
+    const { error } = await supabase.from(tableName).delete().eq('id', record.id);
+    if (!error) {
+      await table.delete(record.id); // Borrar localmente de Dexie
+    } else {
+      console.error(`Error push delete ${tableName}:`, error);
+    }
   }
 }
 
-export async function syncValesToSupabase() {
-  console.log("Iniciando sincronización de vales de resguardo...")
-  
-  try {
-    const pendingVales = await db.vales.where('sync_status').equals('pending').toArray()
-    
-    if (pendingVales.length === 0) {
-      return 0; 
-    }
+async function pullTable(tableName) {
+  const table = db[tableName];
+  if (!table) return;
 
-    console.log(`Encontrados ${pendingVales.length} vales pendientes.`)
+  const { data, error } = await supabase.from(tableName).select('*');
+  if (error) {
+    console.error(`Error pull ${tableName}:`, error);
+    return;
+  }
 
-    for (const vale of pendingVales) {
-      const { id, sync_status, ...valeData } = vale;
+  if (data) {
+    const localRecordsMap = new Map();
+    await table.each(record => {
+      localRecordsMap.set(record.id, record);
+    });
 
-      if (isMocking) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        await db.vales.update(vale.id, { sync_status: 'synced' });
-        console.log(`[MOCK] Vale ${vale.id} sincronizado exitosamente.`);
-      } else {
-        const { error } = await supabase.from('vales').insert([valeData])
-        if (error) {
-          console.error("Error al sincronizar vale a Supabase:", error)
-        } else {
-          await db.vales.update(vale.id, { sync_status: 'synced' })
-        }
+    const toPut = [];
+    for (const remoteRecord of data) {
+      const localRecord = localRecordsMap.get(remoteRecord.id);
+      // Solo sobrescribimos si no hay cambios locales pendientes
+      if (!localRecord || localRecord.sync_status === 'synced') {
+        toPut.push({ ...remoteRecord, sync_status: 'synced' });
       }
     }
+
+    if (toPut.length > 0) {
+      await table.bulkPut(toPut);
+    }
     
-    return pendingVales.length;
-  } catch (error) {
-    console.error("Error crítico durante la sincronización de vales:", error)
-    return 0;
+    // Si hay un registro local 'synced' que ya no existe en la nube, lo borramos localmente
+    const remoteIds = new Set(data.map(r => r.id));
+    const toDelete = [];
+    localRecordsMap.forEach((localRecord, id) => {
+      if (localRecord.sync_status === 'synced' && !remoteIds.has(id)) {
+        toDelete.push(id);
+      }
+    });
+    if (toDelete.length > 0) {
+      await table.bulkDelete(toDelete);
+    }
   }
 }
+
+// Mantener compatibilidad con llamadas viejas
+export const syncItemsToSupabase = syncAll;
+export const syncTicketsToSupabase = syncAll;
+export const syncValesToSupabase = syncAll;

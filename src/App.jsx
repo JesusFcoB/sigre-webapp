@@ -9,10 +9,10 @@ import AssetsView from './components/views/AssetsView'
 import ClassroomInventoryView from './components/views/ClassroomInventoryView'
 import LoginView from './components/views/LoginView'
 import ValesView from './components/views/ValesView'
-import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut, FileSignature } from 'lucide-react'
+import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut, FileSignature, Cloud, CloudOff, RefreshCw } from 'lucide-react'
 
 import { useStore } from './store/useStore'
-import { syncTicketsToSupabase, syncItemsToSupabase, syncValesToSupabase } from './lib/sync'
+import { syncAll } from './lib/sync'
 import { db } from './lib/db'
 import LocationsView from './components/views/LocationsView'
 import UserManagementView from './components/views/UserManagementView'
@@ -26,15 +26,22 @@ function App() {
   const role = useStore((state) => state.role)
   const logout = useStore((state) => state.logout)
 
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncStatusMsg, setSyncStatusMsg] = useState('')
+
   useEffect(() => {
     const handleOnline = async () => {
       setOnlineStatus(true)
-      // Attempt to sync when connection is restored
-      await syncTicketsToSupabase()
-      await syncItemsToSupabase()
-      await syncValesToSupabase()
+      setIsSyncing(true)
+      setSyncStatusMsg('Sincronizando...')
+      const res = await syncAll()
+      setIsSyncing(false)
+      setSyncStatusMsg(res.message || 'Sincronizado')
     }
-    const handleOffline = () => setOnlineStatus(false)
+    const handleOffline = () => {
+      setOnlineStatus(false)
+      setSyncStatusMsg('Modo Offline')
+    }
 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
@@ -42,6 +49,8 @@ function App() {
     // Initial sync check if starting online
     if (navigator.onLine) {
       handleOnline()
+    } else {
+      handleOffline()
     }
 
     return () => {
@@ -107,13 +116,26 @@ function App() {
       {/* Header */}
       <header className="flex justify-between items-center px-4 py-3 bg-card border-b shadow-sm z-40 relative">
         <h1 className="text-xl font-bold text-primary tracking-tight">SIGRE</h1>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground hidden md:inline-block font-medium">
-            {user.name} <span className="opacity-70">({role})</span>
-          </span>
-          <Button variant="ghost" size="icon" onClick={logout} title="Cerrar Sesión" className="text-muted-foreground hover:text-destructive">
-            <LogOut className="w-5 h-5" />
-          </Button>
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border text-xs font-medium">
+            {isSyncing ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" />
+            ) : isOnline ? (
+              <Cloud className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+              <CloudOff className="w-3.5 h-3.5 text-red-500" />
+            )}
+            <span className="text-muted-foreground">{syncStatusMsg}</span>
+          </div>
+
+          <div className="flex items-center gap-3 border-l pl-4">
+            <span className="text-sm text-muted-foreground hidden md:inline-block font-medium">
+              {user.name} <span className="opacity-70">({role})</span>
+            </span>
+            <Button variant="ghost" size="icon" onClick={logout} title="Cerrar Sesión" className="text-muted-foreground hover:text-destructive">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </header>
 

@@ -134,6 +134,7 @@ export default function AssetsView() {
 
   const filteredItems = useMemo(() => {
     return allItems.filter(item => {
+      if (item.sync_status === 'pending_delete') return false;
       const isDiscarded = item.status === 'discarded'
       if (activeTab === 'active' && isDiscarded) return false
       if (activeTab === 'discarded' && !isDiscarded) return false
@@ -197,7 +198,7 @@ export default function AssetsView() {
     }
     try {
       if (editingId) {
-        await db.items.update(editingId, { description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category, serial_number: serial || null, photoBase64: formData.photoBase64 || null, quantity: Number(formData.quantity) || 1, maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0, last_maintenance_date: formData.last_maintenance_date || null })
+        await db.items.update(editingId, { description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category, serial_number: serial || null, photoBase64: formData.photoBase64 || null, quantity: Number(formData.quantity) || 1, maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0, last_maintenance_date: formData.last_maintenance_date || null, sync_status: 'pending_update' })
       } else {
         await db.items.add({ id: crypto.randomUUID(), description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category || null, serial_number: serial || null, photoBase64: formData.photoBase64 || null, sync_status: "pending_create", quantity: Number(formData.quantity) || 1, maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0, last_maintenance_date: formData.last_maintenance_date || null })
       }
@@ -208,7 +209,15 @@ export default function AssetsView() {
 
   const handleDelete = async (id, e) => {
     e.stopPropagation()
-    if (window.confirm("¿Eliminar este bien del registro local?")) await db.items.delete(id)
+    if (window.confirm("¿Eliminar este bien del registro local y de la nube?")) {
+      const item = await db.items.get(id);
+      if (item && item.sync_status === 'pending_create') {
+        await db.items.delete(id);
+      } else {
+        await db.items.update(id, { sync_status: 'pending_delete' });
+      }
+      if (navigator.onLine) syncItemsToSupabase();
+    }
   }
 
   const buildFilterLabel = () => {
