@@ -40,6 +40,14 @@ async function pushTable(tableName) {
   const table = db[tableName];
   if (!table) return;
 
+  // Fix missing sync_status for legacy or seeded records
+  const allRecords = await table.toArray();
+  for (const record of allRecords) {
+    if (!record.sync_status) {
+      await table.update(record.id, { sync_status: 'pending_create' });
+    }
+  }
+
   // Push Creates
   const pendingCreates = await table.where('sync_status').equals('pending_create').or('sync_status').equals('pending').toArray();
   for (const record of pendingCreates) {
