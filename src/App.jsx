@@ -8,7 +8,8 @@ import AssetsView from './components/views/AssetsView'
 
 import ClassroomInventoryView from './components/views/ClassroomInventoryView'
 import LoginView from './components/views/LoginView'
-import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut } from 'lucide-react'
+import ValesView from './components/views/ValesView'
+import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut, FileSignature } from 'lucide-react'
 
 import { useStore } from './store/useStore'
 import { syncTicketsToSupabase, syncItemsToSupabase, syncValesToSupabase } from './lib/sync'
@@ -81,6 +82,8 @@ function App() {
         return <ScannerView navigateTo={setActiveTab} />
       case 'report':
         return <ReportView />
+      case 'vales':
+        return <ValesView />
       case 'conciliation':
         return <ConciliationView />
       case 'classroom_inventory':
@@ -152,6 +155,14 @@ function App() {
             isActive={activeTab === 'report'} 
             onClick={() => setActiveTab('report')} 
           />
+          {role === 'director' && (
+            <NavItem 
+              icon={<FileSignature className="w-5 h-5" />} 
+              label="Vales" 
+              isActive={activeTab === 'vales'} 
+              onClick={() => setActiveTab('vales')} 
+            />
+          )}
           <NavItem 
             icon={<FileSpreadsheet className="w-5 h-5" />} 
             label="Conciliar" 
@@ -164,6 +175,7 @@ function App() {
         <div className="hidden md:flex max-w-5xl mx-auto justify-center gap-4 py-4 bg-card rounded-t-3xl border-t border-x px-8 mt-auto">
            {role !== 'profesor' && <ButtonNavDesktop icon={<LayoutDashboard />} label="Dashboard" isActive={activeTab==='dashboard'} onClick={()=>setActiveTab('dashboard')} />}
            {role !== 'profesor' && <ButtonNavDesktop icon={<Package />} label="Bienes" isActive={activeTab==='assets'} onClick={()=>setActiveTab('assets')} />}
+           {role === 'director' && <ButtonNavDesktop icon={<FileSignature />} label="Vales" isActive={activeTab==='vales'} onClick={()=>setActiveTab('vales')} />}
 
            <ButtonNavDesktop icon={<QrCode />} label="Escáner QR" isActive={activeTab==='scanner'} onClick={()=>setActiveTab('scanner')} />
            <ButtonNavDesktop icon={<AlertCircle />} label="Reportar" isActive={activeTab==='report'} onClick={()=>setActiveTab('report')} />

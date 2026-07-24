@@ -18,3 +18,11 @@ db.version(3).stores({
   vales: '++id, location_id, signatureBase64, signed_at, sync_status'
 });
 
+// v4: Add status for items and update vales schema
+db.version(4).stores({
+  items: 'id, official_inventory_number, description, condition, location_id, category, sync_status, status',
+  locations: 'id, name, responsible_name',
+  tickets: '++id, issue_type, description, location_id, sync_status, reported_at',
+  vales: '++id, person_name, start_date, end_date, sync_status'
+});
+

@@ -42,3 +42,10 @@ Si prefieres usar la terminal (Símbolo del sistema, PowerShell, o bash), sigue 
 *   **Frontend:** React.js con Vite, Tailwind CSS y shadcn/ui.
 *   **Motor Offline:** Dexie.js (para base de datos local) y Zustand (manejo de estados).
 *   **Componentes Adicionales:** `html5-qrcode` para lectura de cámaras, `SheetJS (xlsx)` para parseo de Excels, y `Recharts` para las métricas visuales.
+
+---
+## ¿Qué falta por implementar? (Próximos Pasos - Fase 3)
+*   **Conexión Real a Supabase:** Configurar las variables de entorno para apuntar a un proyecto real en la nube de Supabase.
+*   **Sincronización Bidireccional:** Asegurar que los datos locales (Offline) y de la nube (Online) estén en sintonía mediante un esquema robusto de sincronización de Dexie a PostgreSQL.
+*   **Gestión de Usuarios Nube:** Migrar el Auth quemado localmente al sistema de Autenticación de Supabase (Admin vs Capturista).
+*   **Despliegue a Producción (Vercel/Netlify):** Empaquetar y subir la PWA a la nube para su acceso universal mediante URL pública.

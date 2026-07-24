@@ -3,7 +3,7 @@ import { create } from 'zustand'
 const savedUsers = JSON.parse(localStorage.getItem('sigre_users') || 'null');
 const defaultUsers = savedUsers || [
   { id: '1', name: 'Director General', username: 'director', role: 'director' },
-  { id: '2', name: 'Profesor Asignado', username: 'profesor', role: 'profesor' }
+  { id: '2', name: 'Capturista Asignado', username: 'capturista', role: 'capturista' }
 ];
 
 export const useStore = create((set) => ({

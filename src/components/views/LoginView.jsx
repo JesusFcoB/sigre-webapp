@@ -13,7 +13,7 @@ const LoginView = () => {
   // Registration form state
   const [newName, setNewName] = useState('');
   const [newUsername, setNewUsername] = useState('');
-  const [newRole, setNewRole] = useState('profesor');
+  const [newRole, setNewRole] = useState('capturista');
 
   const users = useStore((state) => state.users);
   const addUser = useStore((state) => state.addUser);
@@ -40,7 +40,7 @@ const LoginView = () => {
     setIsRegistering(false);
     setNewName('');
     setNewUsername('');
-    setNewRole('profesor');
+    setNewRole('capturista');
     // Automatically select the newly created user is a bit tricky here since id is generated in store, 
     // but the user will see it in the list now.
   };
@@ -88,7 +88,7 @@ const LoginView = () => {
                   <label className="text-sm font-medium">Rol de Usuario</label>
                   <Select onChange={(e) => setNewRole(e.target.value)} value={newRole}>
                     <option value="director">Director / Administrador</option>
-                    <option value="profesor">Profesor</option>
+                    <option value="capturista">Capturista / Invitado</option>
                   </Select>
                 </div>
               </div>
@@ -100,7 +100,7 @@ const LoginView = () => {
                     <option value="" disabled>Selecciona un usuario...</option>
                     {users.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name} ({u.role === 'director' ? 'Administrador' : 'Profesor'})
+                        {u.name} ({u.role === 'director' ? 'Administrador' : 'Capturista'})
                       </option>
                     ))}
                   </Select>

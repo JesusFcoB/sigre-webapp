@@ -29,8 +29,22 @@ const CATEGORIES = ["Mobiliario", "Electrónico", "Didáctico", "Otro"]
 const conditionMeta = (val) => CONDITIONS.find(c => c.value === val) || { label: val || "—", color: "bg-gray-100 text-gray-600" }
 
 function emptyForm() {
-  return { description: "", condition: "", location_id: "", category: "", serial_number: "", photoBase64: "", quantity: 1 }
+  return { description: "", condition: "", location_id: "", category: "", serial_number: "", photoBase64: "", quantity: 1, maintenance_frequency_months: 0, last_maintenance_date: "" }
 }
+
+const getMaintenanceInfo = (item) => {
+  if (!item.maintenance_frequency_months || item.maintenance_frequency_months <= 0) return null;
+  if (!item.last_maintenance_date) return { status: 'red', text: 'Mantenimiento Pendiente', color: 'bg-red-500' };
+  
+  const lastDate = new Date(item.last_maintenance_date);
+  const nextDate = new Date(lastDate);
+  nextDate.setMonth(nextDate.getMonth() + Number(item.maintenance_frequency_months));
+  
+  const diffDays = (nextDate - new Date()) / (1000 * 60 * 60 * 24);
+  if (diffDays < 0) return { status: 'red', text: 'Mantenimiento Vencido', color: 'bg-red-500' };
+  if (diffDays <= 15) return { status: 'yellow', text: 'Mantenimiento Próximo', color: 'bg-yellow-500' };
+  return { status: 'green', text: 'Mantenimiento al Día', color: 'bg-green-500' };
+};
 
 // ─── Main component ────────────────────────────────────────────
 export default function AssetsView() {
@@ -40,6 +54,12 @@ export default function AssetsView() {
   const [filterConditions, setFilterConditions] = useState([])
   const [filterCategory, setFilterCategory]   = useState("")
   const [filtersOpen, setFiltersOpen]         = useState(false)
+  
+  // Tabs & Bajas
+  const [activeTab, setActiveTab] = useState("active")
+  const [bajaModalOpen, setBajaModalOpen] = useState(false)
+  const [bajaData, setBajaData] = useState({ reason: '', location: '', photoBase64: '' })
+  const [itemToBaja, setItemToBaja] = useState(null)
 
   // CRUD Drawer
   const [drawerOpen, setDrawerOpen]   = useState(false)
@@ -53,6 +73,7 @@ export default function AssetsView() {
 
   const allItems  = useLiveQuery(() => db.items.toArray(), []) || []
   const locations = useLiveQuery(() => db.locations.toArray(), []) || []
+  const role = useStore((state) => state.role);
 
   const editingItem = useStore(state => state.editingItem)
   const setEditingItem = useStore(state => state.setEditingItem)
@@ -75,6 +96,35 @@ export default function AssetsView() {
     }
   }, [editingItem, setEditingItem])
 
+  const handleBajaImageCapture = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onloadend = () => setBajaData(p => ({ ...p, photoBase64: reader.result }))
+    reader.readAsDataURL(file)
+  }
+
+  const handleBajaSubmit = async (e) => {
+    e.preventDefault()
+    if (!itemToBaja) return
+    try {
+      await db.items.update(itemToBaja.id, {
+        status: 'discarded',
+        discard_reason: bajaData.reason,
+        discard_location: bajaData.location,
+        discard_date: new Date().toISOString(),
+        discard_photoBase64: bajaData.photoBase64 || null,
+        sync_status: 'pending_update'
+      })
+      setBajaModalOpen(false)
+      setBajaData({ reason: '', location: '', photoBase64: '' })
+      setItemToBaja(null)
+      if (navigator.onLine) syncItemsToSupabase()
+    } catch(err) {
+      console.error(err)
+    }
+  }
+
 
   const locationMap = useMemo(() => {
     const m = {}
@@ -84,6 +134,10 @@ export default function AssetsView() {
 
   const filteredItems = useMemo(() => {
     return allItems.filter(item => {
+      const isDiscarded = item.status === 'discarded'
+      if (activeTab === 'active' && isDiscarded) return false
+      if (activeTab === 'discarded' && !isDiscarded) return false
+
       const matchSearch    = !search || (item.description || '').toLowerCase().includes(search.toLowerCase()) || (item.serial_number || '').toLowerCase().includes(search.toLowerCase())
       
       // Permitir que si item.location_id es texto libre (importado de excel) empate con el nombre del salón del filtro
@@ -120,7 +174,7 @@ export default function AssetsView() {
   const openEdit = (item, e) => {
     e.stopPropagation()
     setEditingId(item.id)
-    setFormData({ description: item.description || "", condition: item.condition || "", location_id: item.location_id || "", category: item.category || "", serial_number: item.serial_number || "", photoBase64: item.photoBase64 || "", quantity: item.quantity || 1 })
+    setFormData({ description: item.description || "", condition: item.condition || "", location_id: item.location_id || "", category: item.category || "", serial_number: item.serial_number || "", photoBase64: item.photoBase64 || "", quantity: item.quantity || 1, maintenance_frequency_months: item.maintenance_frequency_months || 0, last_maintenance_date: item.last_maintenance_date || "" })
     setFormError("")
     setDrawerOpen(true)
   }
@@ -143,9 +197,9 @@ export default function AssetsView() {
     }
     try {
       if (editingId) {
-        await db.items.update(editingId, { description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category, serial_number: serial || null, photoBase64: formData.photoBase64 || null, quantity: Number(formData.quantity) || 1 })
+        await db.items.update(editingId, { description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category, serial_number: serial || null, photoBase64: formData.photoBase64 || null, quantity: Number(formData.quantity) || 1, maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0, last_maintenance_date: formData.last_maintenance_date || null })
       } else {
-        await db.items.add({ id: crypto.randomUUID(), description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category || null, serial_number: serial || null, photoBase64: formData.photoBase64 || null, sync_status: "pending_create", quantity: Number(formData.quantity) || 1 })
+        await db.items.add({ id: crypto.randomUUID(), description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category || null, serial_number: serial || null, photoBase64: formData.photoBase64 || null, sync_status: "pending_create", quantity: Number(formData.quantity) || 1, maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0, last_maintenance_date: formData.last_maintenance_date || null })
       }
       setDrawerOpen(false)
       if (navigator.onLine) syncItemsToSupabase()
@@ -232,6 +286,22 @@ export default function AssetsView() {
         </div>
       </div>
 
+      {/* Tabs Bajas */}
+      <div className="flex bg-muted p-1 rounded-xl">
+        <button 
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'active' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
+          onClick={() => setActiveTab('active')}
+        >
+          Bienes Activos
+        </button>
+        <button 
+          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'discarded' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
+          onClick={() => setActiveTab('discarded')}
+        >
+          Dados de Baja
+        </button>
+      </div>
+
       {/* Search bar */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -307,7 +377,13 @@ export default function AssetsView() {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-foreground truncate">{item.description}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-sm text-foreground truncate">{item.description}</p>
+                    {(() => {
+                      const maint = getMaintenanceInfo(item);
+                      return maint ? <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${maint.color} shadow-[0_0_5px_rgba(0,0,0,0.2)]`} title={maint.text} /> : null;
+                    })()}
+                  </div>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Cant: {item.quantity || 1}</span>
@@ -316,14 +392,16 @@ export default function AssetsView() {
                   </div>
                   {item.serial_number && <p className="text-[10px] text-muted-foreground mt-0.5">Serie: {item.serial_number}</p>}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={(e) => openEdit(item, e)} title="Editar">
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(item.id, e)} title="Eliminar">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                {role === 'director' && (
+                  <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={(e) => openEdit(item, e)} title="Editar">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(item.id, e)} title="Eliminar">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -382,6 +460,16 @@ export default function AssetsView() {
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold text-foreground">Cantidad *</label>
                     <Input type="number" name="quantity" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} min="1" required className="h-10" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-foreground">Frec. Mant. (meses)</label>
+                    <Input type="number" value={formData.maintenance_frequency_months} onChange={e => setFormData(p => ({ ...p, maintenance_frequency_months: e.target.value }))} placeholder="0 = No requiere" min="0" className="h-10" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-foreground">Último Mant.</label>
+                    <Input type="date" value={formData.last_maintenance_date} onChange={e => setFormData(p => ({ ...p, last_maintenance_date: e.target.value }))} className="h-10" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -502,12 +590,92 @@ export default function AssetsView() {
                   </div>
                 </div>
 
-                <Button className="w-full h-11 rounded-xl" onClick={() => setDetailItem(null)}>Cerrar</Button>
+                {(() => {
+                  const maint = getMaintenanceInfo(detailItem);
+                  if (!maint) return null;
+                  return (
+                    <div className="p-4 rounded-xl space-y-2 mt-4 bg-muted/50 border">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-3 h-3 rounded-full ${maint.color} shadow-sm`} />
+                        <h4 className="font-bold text-foreground">Estado de Mantenimiento</h4>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{maint.text}</p>
+                      <Button variant="outline" size="sm" className="w-full mt-2 font-bold" onClick={async () => {
+                        const today = new Date().toISOString().split('T')[0];
+                        await db.items.update(detailItem.id, { last_maintenance_date: today, sync_status: 'pending_update' });
+                        setDetailItem({ ...detailItem, last_maintenance_date: today });
+                        if (navigator.onLine) syncItemsToSupabase();
+                      }}>
+                        Registrar Mantenimiento Hoy
+                      </Button>
+                    </div>
+                  );
+                })()}
+
+                {detailItem.status === 'discarded' && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 p-4 rounded-xl space-y-2 mt-4">
+                    <h4 className="font-bold text-red-700 dark:text-red-400">Información de Baja</h4>
+                    <p className="text-sm text-red-600 dark:text-red-300"><strong>Fecha:</strong> {new Date(detailItem.discard_date).toLocaleDateString()}</p>
+                    <p className="text-sm text-red-600 dark:text-red-300"><strong>Motivo:</strong> {detailItem.discard_reason}</p>
+                    {detailItem.discard_location && <p className="text-sm text-red-600 dark:text-red-300"><strong>Resguardo:</strong> {detailItem.discard_location}</p>}
+                    {detailItem.discard_photoBase64 && (
+                      <img src={detailItem.discard_photoBase64} alt="Evidencia" className="w-full h-32 object-cover rounded-lg mt-2" />
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 h-11 rounded-xl" onClick={() => setDetailItem(null)}>Cerrar</Button>
+                  {role === 'director' && detailItem.status !== 'discarded' && (
+                    <Button variant="destructive" className="flex-1 h-11 rounded-xl font-bold" onClick={() => { setItemToBaja(detailItem); setBajaModalOpen(true); setDetailItem(null); }}>
+                      Dar de Baja
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         )
       })()}
+      {/* Baja Modal */}
+      {bajaModalOpen && itemToBaja && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setBajaModalOpen(false)} />
+          <div className="relative w-full max-w-sm bg-card rounded-3xl shadow-2xl z-10 p-5">
+            <h3 className="text-xl font-bold text-destructive mb-2">Dar de Baja</h3>
+            <p className="text-sm text-muted-foreground mb-4">¿Por qué motivo das de baja el bien <strong>{itemToBaja.description}</strong>?</p>
+            <form onSubmit={handleBajaSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold">Motivo (Desgaste, Robo, Daño, etc.) *</label>
+                <Input value={bajaData.reason} onChange={e => setBajaData(p => ({ ...p, reason: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold">Lugar de Resguardo (Opcional)</label>
+                <Input value={bajaData.location} onChange={e => setBajaData(p => ({ ...p, location: e.target.value }))} placeholder="Ej. Almacén 2" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold">Fotografía Evidencia (Opcional)</label>
+                {bajaData.photoBase64 ? (
+                  <div className="relative rounded-xl overflow-hidden border">
+                    <img src={bajaData.photoBase64} alt="Evidencia" className="w-full h-32 object-cover" />
+                    <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 rounded-full h-8 w-8" onClick={() => setBajaData(p => ({ ...p, photoBase64: "" }))}><X className="w-4 h-4" /></Button>
+                  </div>
+                ) : (
+                  <div className="relative border-2 border-dashed border-input rounded-xl bg-muted/30 p-4 flex flex-col items-center gap-2 text-muted-foreground hover:bg-muted/50 transition-colors">
+                    <Camera className="w-6 h-6 opacity-40" />
+                    <p className="text-xs font-medium">Toca para capturar imagen</p>
+                    <input type="file" accept="image/*" capture="environment" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleBajaImageCapture} />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setBajaModalOpen(false)}>Cancelar</Button>
+                <Button type="submit" variant="destructive" className="flex-1 h-12 rounded-xl font-bold">Confirmar Baja</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

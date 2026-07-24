@@ -22,7 +22,9 @@ export default function AssetRegistrationView() {
     location_id: '',
     serial_number: '',
     photoBase64: '',
-    quantity: 1
+    quantity: 1,
+    maintenance_frequency_months: 0,
+    last_maintenance_date: ''
   });
 
   // Fetch pending items to show in the list
@@ -34,6 +36,7 @@ export default function AssetRegistrationView() {
 
   const editingItem = useStore(state => state.editingItem);
   const setEditingItem = useStore(state => state.setEditingItem);
+  const role = useStore(state => state.role);
 
   useEffect(() => {
     if (editingItem) {
@@ -81,7 +84,9 @@ export default function AssetRegistrationView() {
           location_id: formData.location_id,
           serial_number: serialNumber || null,
           photoBase64: formData.photoBase64 || null,
-          quantity: Number(formData.quantity) || 1
+          quantity: Number(formData.quantity) || 1,
+          maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0,
+          last_maintenance_date: formData.last_maintenance_date || null
         });
       } else {
         const newItem = {
@@ -92,7 +97,9 @@ export default function AssetRegistrationView() {
           serial_number: serialNumber || null,
           photoBase64: formData.photoBase64 || null,
           sync_status: 'pending_create',
-          quantity: Number(formData.quantity) || 1
+          quantity: Number(formData.quantity) || 1,
+          maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0,
+          last_maintenance_date: formData.last_maintenance_date || null
         };
         await db.items.add(newItem);
       }
@@ -107,7 +114,9 @@ export default function AssetRegistrationView() {
         location_id: '',
         serial_number: '',
         photoBase64: '',
-        quantity: 1
+        quantity: 1,
+        maintenance_frequency_months: 0,
+        last_maintenance_date: ''
       });
 
       if (navigator.onLine) {
@@ -128,7 +137,9 @@ export default function AssetRegistrationView() {
       location_id: item.location_id || '',
       serial_number: item.serial_number || '',
       photoBase64: item.photoBase64 || '',
-      quantity: item.quantity || 1
+      quantity: item.quantity || 1,
+      maintenance_frequency_months: item.maintenance_frequency_months || 0,
+      last_maintenance_date: item.last_maintenance_date || ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -141,7 +152,7 @@ export default function AssetRegistrationView() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ description: '', condition: '', location_id: '', serial_number: '', photoBase64: '', quantity: 1 });
+    setFormData({ description: '', condition: '', location_id: '', serial_number: '', photoBase64: '', quantity: 1, maintenance_frequency_months: 0, last_maintenance_date: '' });
   };
 
   if (submitted) {
@@ -276,6 +287,31 @@ export default function AssetRegistrationView() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-foreground">Frec. Mantenimiento (meses)</label>
+              <Input 
+                type="number"
+                name="maintenance_frequency_months" 
+                value={formData.maintenance_frequency_months} 
+                onChange={handleInputChange} 
+                min="0"
+                className="h-12" 
+                placeholder="0 = No requiere"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-foreground">Último Mantenimiento</label>
+              <Input 
+                type="date"
+                name="last_maintenance_date" 
+                value={formData.last_maintenance_date} 
+                onChange={handleInputChange} 
+                className="h-12" 
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground">Fotografía del Bien (Opcional)</label>
             {formData.photoBase64 ? (
@@ -344,14 +380,16 @@ export default function AssetRegistrationView() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleEdit(item)}>
-                    <Edit2 className="w-4 h-4 text-foreground" />
-                  </Button>
-                  <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50" onClick={() => handleDelete(item.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                {role === 'director' && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleEdit(item)}>
+                      <Edit2 className="w-4 h-4 text-foreground" />
+                    </Button>
+                    <Button variant="destructive" size="icon" className="h-8 w-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50" onClick={() => handleDelete(item.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
