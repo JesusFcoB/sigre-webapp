@@ -63,9 +63,6 @@ export default function ScannerView({ navigateTo }) {
                 <Camera className="mr-2 h-5 w-5" />
                 Activar Cámara
               </Button>
-              <Button size="lg" variant="outline" className="h-14 text-lg rounded-xl w-full border-primary/20 text-primary" onClick={() => handleScan("aula_medios")}>
-                Simular Escaneo (Demo)
-              </Button>
             </div>
           </div>
         </div>

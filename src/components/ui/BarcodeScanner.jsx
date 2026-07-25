@@ -4,27 +4,36 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
 export default function BarcodeScanner({ onScan, onClose }) {
-  useEffect(() => {
-    const scanner = new Html5QrcodeScanner(
-      "reader",
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      /* verbose= */ false
-    );
+  const scannerRef = React.useRef(null);
 
-    scanner.render(
-      (decodedText) => {
-        scanner.clear();
-        onScan(decodedText);
-      },
-      (errorMessage) => {
-        // Ignorar errores de frame no encontrado
-      }
-    );
+  useEffect(() => {
+    if (!scannerRef.current) {
+      scannerRef.current = new Html5QrcodeScanner(
+        "reader",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        /* verbose= */ false
+      );
+
+      scannerRef.current.render(
+        (decodedText) => {
+          if (scannerRef.current) {
+            scannerRef.current.clear().catch(console.error);
+          }
+          onScan(decodedText);
+        },
+        (errorMessage) => {
+          // Ignorar errores de frame no encontrado
+        }
+      );
+    }
 
     return () => {
-      scanner.clear().catch(error => {
-        console.error("Failed to clear html5QrcodeScanner. ", error);
-      });
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(error => {
+          console.error("Failed to clear html5QrcodeScanner. ", error);
+        });
+        scannerRef.current = null;
+      }
     };
   }, [onScan]);
 

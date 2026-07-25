@@ -71,7 +71,7 @@ export default function ClassroomInventoryView({ navigateTo }) {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h2 className="text-2xl font-bold text-foreground capitalize">Inventario: {locationInfo ? locationInfo.name : selectedLocation.replace('_', ' ')}</h2>
+          <h2 className="text-2xl font-bold text-foreground capitalize">Inventario: {locationInfo ? locationInfo.name : String(selectedLocation).replace('_', ' ')}</h2>
           <p className="text-muted-foreground text-sm">Responsable: {locationInfo ? locationInfo.responsible_name : 'No Asignado'}</p>
         </div>
       </div>
