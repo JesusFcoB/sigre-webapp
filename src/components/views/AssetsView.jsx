@@ -149,7 +149,7 @@ export default function AssetsView() {
       const matchCategory  = !filterCategory || item.category === filterCategory || (!item.category && filterCategory === "Otro")
       return matchSearch && matchLocation && matchCondition && matchCategory
     })
-  }, [allItems, search, filterLocation, filterConditions, filterCategory])
+  }, [allItems, search, filterLocation, filterConditions, filterCategory, activeTab])
 
   const buildDetail = (item) => {
     const sameDesc = allItems.filter(i => i.description?.toLowerCase() === item.description?.toLowerCase())
