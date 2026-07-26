@@ -1,4 +1,5 @@
 @echo off
+set "PATH=C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VisualStudio\NodeJs;%PATH%"
 color 0B
 echo =======================================================
 echo          SIGRE - Sistema de Gestion Escolar
@@ -22,7 +23,9 @@ echo.
 echo Levantando servidor local de Vite...
 echo.
 echo =======================================================
-echo    Abre tu navegador en: http://localhost:5173
+echo    Abre tu navegador en:
+echo    Local:   http://localhost:5173
+echo    Red:     http://192.168.100.11:5173
 echo =======================================================
 echo.
 call npm run dev
