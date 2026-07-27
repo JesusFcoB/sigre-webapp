@@ -1,10 +1,7 @@
 # SIGRE - Sistema Integral de Gestión de Recursos Escolares
 
-<<<<<<< HEAD
-Sistema Integral de Gestión de Recursos Escolares
-=======
+Sistema Integral de Gestión de Recursos Escolares (SIGRE).
 Una Aplicación Web Progresiva (PWA) enfocada en la gestión de inventario, mantenimiento y control de recursos en planteles escolares. Diseñada con un enfoque "Offline-First" para operar sin problemas en zonas con conectividad limitada.
->>>>>>> 5583f54160b24fcf8b87ab9ed960eb7903ad8f87
 
 ## Características Principales (Implementadas hasta ahora)
 
@@ -55,6 +52,10 @@ Si prefieres usar la terminal (Símbolo del sistema, PowerShell, o bash), sigue 
 *   **Componentes Adicionales:** `html5-qrcode` para lectura de cámaras, `SheetJS (xlsx)` para parseo de Excels, `Recharts` para las métricas visuales, y `jsPDF` para exportación de vales.
 
 ---
-## ¿Qué falta por implementar? (Próximos Pasos - Fase 4: Despliegue)
-*   **Despliegue a Producción (Vercel/Netlify):** Empaquetar y subir la PWA a la nube para su acceso universal mediante URL pública.
-*   **Gestión de Usuarios Nube (Opcional):** Migrar el Auth quemado localmente al sistema de Autenticación de Supabase (Admin vs Capturista) para mayor estrictez de cuentas.
+## ¿Qué falta por implementar / Mejoras Futuras (Roadmap)?
+*   **Migración a Autenticación en Nube (Supabase Auth):** Reemplazar el inicio de sesión local estático por un sistema de cuentas vinculado a correos electrónicos reales para mayor seguridad corporativa.
+*   **Impresión masiva de Etiquetas y Códigos QR:** Crear un módulo para seleccionar múltiples bienes y generar un PDF con plantillas de etiquetas listas para imprimir en impresoras térmicas.
+*   **Optimización de Imágenes (Offline):** Implementar compresión de imágenes y conversión a WebP antes de guardar en la base de datos local para ahorrar espacio de almacenamiento en teléfonos de gama baja.
+*   **Notificaciones Push para Mantenimientos:** Habilitar el uso del Service Worker para enviar notificaciones al dispositivo del encargado cuando un equipo (como un minisplit) llegue a su fecha de mantenimiento.
+*   **Historial de Depreciación y Movimientos:** Mantener un registro contable del valor estimado del equipo y un registro detallado de qué salón a qué salón se movió cada artículo en qué fecha.
+*   **Configurador de Planteles:** Permitir que la misma aplicación maneje distintas escuelas o turnos escolares (Matutino/Vespertino) bajo la misma cuenta de administrador.
