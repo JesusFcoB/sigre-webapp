@@ -19,10 +19,10 @@ import autoTable from "jspdf-autotable"
 
 // ─── Constants ────────────────────────────────────────────────
 const CONDITIONS = [
-  { value: "nuevo",   label: "Nuevo",   color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  { value: "bueno",   label: "Bueno",   color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+  { value: "nuevo", label: "Nuevo", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+  { value: "bueno", label: "Bueno", color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
   { value: "regular", label: "Regular", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" },
-  { value: "malo",    label: "Malo",    color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+  { value: "malo", label: "Malo", color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
 ]
 const CATEGORIES = ["Mobiliario", "Electrónico", "Didáctico", "Otro"]
 
@@ -77,9 +77,8 @@ function CategoryAutocomplete({ value, onChange, categories }) {
                 onChange(cat);
                 setOpen(false);
               }}
-              className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${
-                value === cat ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted font-medium"
-              }`}
+              className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${value === cat ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted font-medium"
+                }`}
             >
               <span>{cat}</span>
               {value === cat && <CheckCircle2 className="w-4 h-4 shrink-0" />}
@@ -139,9 +138,8 @@ function LocationAutocomplete({ locations, value, onChange }) {
                 onChange(loc.id);
                 setOpen(false);
               }}
-              className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${
-                value === loc.id || value === loc.name ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted font-medium"
-              }`}
+              className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${value === loc.id || value === loc.name ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted font-medium"
+                }`}
             >
               <span className="truncate">{loc.name}</span>
               {(value === loc.id || value === loc.name) && <CheckCircle2 className="w-4 h-4 shrink-0" />}
@@ -174,11 +172,11 @@ function emptyForm() {
 const getMaintenanceInfo = (item) => {
   if (!item.maintenance_frequency_months || item.maintenance_frequency_months <= 0) return null;
   if (!item.last_maintenance_date) return { status: 'red', text: 'Mantenimiento Pendiente', color: 'bg-red-500' };
-  
+
   const lastDate = new Date(item.last_maintenance_date);
   const nextDate = new Date(lastDate);
   nextDate.setMonth(nextDate.getMonth() + Number(item.maintenance_frequency_months));
-  
+
   const diffDays = (nextDate - new Date()) / (1000 * 60 * 60 * 24);
   if (diffDays < 0) return { status: 'red', text: 'Mantenimiento Vencido', color: 'bg-red-500' };
   if (diffDays <= 15) return { status: 'yellow', text: 'Mantenimiento Próximo', color: 'bg-yellow-500' };
@@ -188,12 +186,12 @@ const getMaintenanceInfo = (item) => {
 // ─── Main component ────────────────────────────────────────────
 export default function AssetsView() {
   // Filters
-  const [search, setSearch]                   = useState("")
-  const [filterLocation, setFilterLocation]   = useState("")
+  const [search, setSearch] = useState("")
+  const [filterLocation, setFilterLocation] = useState("")
   const [filterConditions, setFilterConditions] = useState([])
-  const [filterCategory, setFilterCategory]   = useState("")
-  const [filtersOpen, setFiltersOpen]         = useState(false)
-  
+  const [filterCategory, setFilterCategory] = useState("")
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
   // Tabs & Bajas
   const [activeTab, setActiveTab] = useState("active")
   const [bajaModalOpen, setBajaModalOpen] = useState(false)
@@ -201,16 +199,16 @@ export default function AssetsView() {
   const [itemToBaja, setItemToBaja] = useState(null)
 
   // CRUD Drawer
-  const [drawerOpen, setDrawerOpen]   = useState(false)
-  const [editingId, setEditingId]     = useState(null)
-  const [formData, setFormData]       = useState(emptyForm())
-  const [formError, setFormError]     = useState("")
-  const [isScanning, setIsScanning]   = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [formData, setFormData] = useState(emptyForm())
+  const [formError, setFormError] = useState("")
+  const [isScanning, setIsScanning] = useState(false)
 
   // Detail modal
-  const [detailItem, setDetailItem]   = useState(null)
+  const [detailItem, setDetailItem] = useState(null)
 
-  const allItems  = useLiveQuery(() => db.items.toArray(), []) || []
+  const allItems = useLiveQuery(() => db.items.toArray(), []) || []
   const locations = useLiveQuery(() => db.locations.toArray(), []) || []
   const role = useStore((state) => state.role);
 
@@ -224,6 +222,10 @@ export default function AssetsView() {
 
   const editingItem = useStore(state => state.editingItem)
   const setEditingItem = useStore(state => state.setEditingItem)
+
+  const uniqueDescriptions = useMemo(() => {
+    return Array.from(new Set(allItems.map(i => i.description?.trim()).filter(Boolean))).sort();
+  }, [allItems]);
 
   useEffect(() => {
     if (editingItem) {
@@ -275,7 +277,7 @@ export default function AssetsView() {
       setBajaData({ reason: '', location: '', photoBase64: '' })
       setItemToBaja(null)
       if (navigator.onLine) syncItemsToSupabase()
-    } catch(err) {
+    } catch (err) {
       console.error(err)
     }
   }
@@ -294,14 +296,14 @@ export default function AssetsView() {
       if (activeTab === 'active' && isDiscarded) return false
       if (activeTab === 'discarded' && !isDiscarded) return false
 
-      const matchSearch    = !search || (item.description || '').toLowerCase().includes(search.toLowerCase()) || (item.serial_number || '').toLowerCase().includes(search.toLowerCase())
-      
+      const matchSearch = !search || (item.description || '').toLowerCase().includes(search.toLowerCase()) || (item.serial_number || '').toLowerCase().includes(search.toLowerCase())
+
       // Permitir que si item.location_id es texto libre (importado de excel) empate con el nombre del salón del filtro
       const locFilterName = locationMap[filterLocation]?.name?.toLowerCase();
-      const matchLocation  = !filterLocation || item.location_id === filterLocation || (locFilterName && (item.location_id || '').toLowerCase() === locFilterName);
-      
+      const matchLocation = !filterLocation || item.location_id === filterLocation || (locFilterName && (item.location_id || '').toLowerCase() === locFilterName);
+
       const matchCondition = filterConditions.length === 0 || filterConditions.includes(item.condition)
-      const matchCategory  = !filterCategory || item.category === filterCategory || (!item.category && filterCategory === "Otro")
+      const matchCategory = !filterCategory || item.category === filterCategory || (!item.category && filterCategory === "Otro")
       return matchSearch && matchLocation && matchCondition && matchCategory
     })
   }, [allItems, search, filterLocation, filterConditions, filterCategory, activeTab])
@@ -313,7 +315,7 @@ export default function AssetsView() {
     sameDesc.forEach(i => {
       const q = i.quantity || 1
       const locName = locationMap[i.location_id]?.name || "Sin aula"
-      const resp    = locationMap[i.location_id]?.responsible_name || "—"
+      const resp = locationMap[i.location_id]?.responsible_name || "—"
       if (!byLocation[locName]) byLocation[locName] = { count: 0, responsible: resp }
       byLocation[locName].count += q
       byCondition[i.condition] = (byCondition[i.condition] || 0) + q
@@ -362,38 +364,12 @@ export default function AssetsView() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError("")
-
-    const totalQty = Number(formData.quantity) || 1;
-    const sumQty = (formData.breakdown || []).reduce((acc, r) => acc + (Number(r.quantity) || 0), 0);
-    if (sumQty !== totalQty) {
-      setFormError(`La suma de cantidades en el desglose (${sumQty}) debe ser exactamente igual a la Cantidad total (${totalQty}).`);
-      return;
+    const serial = formData.serial_number?.trim()
+    if (serial) {
+      const existing = await db.items.filter(i => i.serial_number === serial).first()
+      if (existing && existing.id !== editingId) { setFormError("Ya existe un bien con este número de serie."); return }
     }
-
     try {
-      const now = new Date();
-      const dd = String(now.getDate()).padStart(2, '0');
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const yy = String(now.getFullYear()).slice(-2);
-      const dateStr = `${dd}${mm}${yy}`;
-
-      const prefix = formData.serial_prefix?.trim() || generateAutoPrefix(formData.description);
-
-      const generateFolio = async (pref, offset = 0) => {
-        const basePrefix = `${pref}-${dateStr}-`;
-        const existing = await db.items.filter(i => (i.serial_number || "").startsWith(basePrefix)).toArray();
-        let maxSeq = 0;
-        existing.forEach(i => {
-          const parts = (i.serial_number || "").split("-");
-          const lastPart = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(lastPart) && lastPart > maxSeq) {
-            maxSeq = lastPart;
-          }
-        });
-        const nextSeq = maxSeq + 1 + offset;
-        return `${basePrefix}${String(nextSeq).padStart(3, '0')}`;
-      };
-
       if (editingId) {
         const firstRow = formData.breakdown[0] || { condition: "nuevo", quantity: totalQty };
         let currentSerial = formData.serial_number;
@@ -482,7 +458,7 @@ export default function AssetsView() {
   }
 
   const exportExcel = () => {
-    const wb  = XLSX.utils.book_new()
+    const wb = XLSX.utils.book_new()
     const rows = filteredItems.map(i => ({
       "Descripción": i.description || "", "Categoría": i.category || "—",
       "Estado": conditionMeta(i.condition).label, "Salón": locationMap[i.location_id]?.name || "—",
@@ -499,17 +475,17 @@ export default function AssetsView() {
   }
 
   const exportPDF = () => {
-    const doc  = new jsPDF({ orientation: "landscape" })
+    const doc = new jsPDF({ orientation: "landscape" })
     const date = new Date().toLocaleDateString("es-MX")
     doc.setFontSize(16); doc.text("SIGRE — Inventario de Bienes", 14, 14)
     doc.setFontSize(9); doc.setTextColor(100); doc.text(`Generado: ${date}   Filtros: ${buildFilterLabel()}`, 14, 22)
     autoTable(doc, {
       startY: 28,
-      head: [["Descripción","Categoría","Estado","Salón","Responsable","No. Serie","Cant."]],
-      body: filteredItems.map(i => [i.description||"", i.category||"—", conditionMeta(i.condition).label, locationMap[i.location_id]?.name||"—", locationMap[i.location_id]?.responsible_name||"—", i.serial_number||"—", i.quantity||1]),
-      styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [59,130,246] }, alternateRowStyles: { fillColor: [245,247,250] }
+      head: [["Descripción", "Categoría", "Estado", "Salón", "Responsable", "No. Serie", "Cant."]],
+      body: filteredItems.map(i => [i.description || "", i.category || "—", conditionMeta(i.condition).label, locationMap[i.location_id]?.name || "—", locationMap[i.location_id]?.responsible_name || "—", i.serial_number || "—", i.quantity || 1]),
+      styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [59, 130, 246] }, alternateRowStyles: { fillColor: [245, 247, 250] }
     })
-    doc.save(`SIGRE_Bienes_${date.replace(/\//g,"-")}.pdf`)
+    doc.save(`SIGRE_Bienes_${date.replace(/\//g, "-")}.pdf`)
   }
 
   const activeFiltersCount = [!!search, !!filterLocation, filterConditions.length > 0, !!filterCategory].filter(Boolean).length
@@ -549,19 +525,36 @@ export default function AssetsView() {
 
       {/* Tabs Bajas */}
       <div className="flex bg-muted p-1 rounded-xl">
-        <button 
+        <button
           className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'active' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
           onClick={() => setActiveTab('active')}
         >
           Bienes Activos
         </button>
-        <button 
+        <button
           className={`flex-1 py-2 text-sm font-bold rounded-lg transition-colors ${activeTab === 'discarded' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
           onClick={() => setActiveTab('discarded')}
         >
           Dados de Baja
         </button>
       </div>
+
+      {/* Resumen de Estados */}
+      {activeTab === 'active' && (
+        <div className="flex flex-wrap gap-2 py-1">
+          {CONDITIONS.map(cond => {
+            const count = allItems.filter(i => i.condition === cond.value && i.status !== 'discarded').reduce((acc, i) => acc + (i.quantity || 1), 0);
+            if (count === 0) return null;
+            return (
+              <div key={cond.value} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card shadow-sm text-xs font-bold animate-in fade-in">
+                <span className={`w-2.5 h-2.5 rounded-full ${cond.color.split(' ')[0]}`} />
+                <span className="text-foreground capitalize">{cond.label}:</span>
+                <span className="text-muted-foreground">{count}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Search bar */}
       <div className="flex gap-2">
@@ -626,7 +619,7 @@ export default function AssetsView() {
         <div className="flex flex-col gap-2">
           {filteredItems.map(item => {
             const meta = conditionMeta(item.condition)
-            const loc  = locationMap[item.location_id]
+            const loc = locationMap[item.location_id]
             return (
               <div key={item.id} onClick={() => setDetailItem(item)}
                 className="bg-card border rounded-2xl p-3.5 flex items-center gap-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer active:scale-[0.99] group">
@@ -653,16 +646,18 @@ export default function AssetsView() {
                   </div>
                   {item.serial_number && <p className="text-[10px] text-muted-foreground mt-0.5">Serie: {item.serial_number}</p>}
                 </div>
-                {role === 'director' && (
-                  <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1.5 shrink-0 transition-opacity">
+                  {role !== 'profesor' && (
                     <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={(e) => openEdit(item, e)} title="Editar">
                       <Edit2 className="w-3.5 h-3.5" />
                     </Button>
+                  )}
+                  {role === 'director' && (
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(item.id, e)} title="Eliminar">
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )
           })}
@@ -692,24 +687,8 @@ export default function AssetsView() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* 1. NOMBRE (antes Descripción) */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-foreground">Nombre *</label>
-                  <Input
-                    name="description"
-                    value={formData.description}
-                    onChange={e => {
-                      const val = e.target.value;
-                      setFormData(p => {
-                        const next = { ...p, description: val };
-                        if (!p.prefix_edited) {
-                          next.serial_prefix = generateAutoPrefix(val);
-                        }
-                        return next;
-                      });
-                    }}
-                    placeholder="Ej. Minisplit Mirage 2T, Silla acojinada…"
-                    required
-                    className="h-11 rounded-xl"
-                  />
+                  <label className="text-sm font-bold text-foreground">Descripción *</label>
+                  <Input name="description" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Ej. Minisplit Mirage 2T…" required className="h-12" />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -773,11 +752,10 @@ export default function AssetsView() {
                       <label className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wide">
                         <Layers className="w-3.5 h-3.5 text-primary" /> Desglose por Estado *
                       </label>
-                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                        sumBreakdown === Number(formData.quantity)
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${sumBreakdown === Number(formData.quantity)
                           ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
                           : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-                      }`}>
+                        }`}>
                         Suma: {sumBreakdown} de {formData.quantity || 0}
                       </span>
                     </div>
@@ -927,23 +905,8 @@ export default function AssetsView() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-foreground">Prefijo de Serie</label>
                   <div className="flex gap-2">
-                    <Input
-                      value={formData.serial_prefix}
-                      onChange={e => setFormData(p => ({ ...p, serial_prefix: e.target.value.toUpperCase(), prefix_edited: true }))}
-                      placeholder="Ej. MIN"
-                      maxLength={10}
-                      className="h-11 font-mono font-bold text-base uppercase tracking-wider flex-1 rounded-xl"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-11 px-3 shrink-0 rounded-xl gap-1.5 text-xs font-semibold"
-                      onClick={() => setIsScanning(true)}
-                      title="Escanear código de barras para prefijo"
-                    >
-                      <ScanBarcode className="w-4 h-4 text-muted-foreground" />
-                      <span className="hidden sm:inline">Escanear</span>
-                    </Button>
+                    <Input value={formData.serial_number} onChange={e => setFormData(p => ({ ...p, serial_number: e.target.value }))} placeholder="SN-123456789" className="h-12 flex-1" />
+                    <Button type="button" variant="outline" className="h-12 w-12 px-0 shrink-0" onClick={() => setIsScanning(true)}><ScanBarcode className="w-5 h-5 text-muted-foreground" /></Button>
                   </div>
                   <p className="text-xs text-muted-foreground italic">
                     Los folios se generarán automáticamente al guardar (Ej. {formData.serial_prefix || "PRE"}-DDMMYY-001)
@@ -1007,7 +970,7 @@ export default function AssetsView() {
       {/* Detail Modal */}
       {detailItem && (() => {
         const detail = buildDetail(detailItem)
-        const meta   = conditionMeta(detailItem.condition)
+        const meta = conditionMeta(detailItem.condition)
         return (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDetailItem(null)} />
@@ -1070,7 +1033,7 @@ export default function AssetsView() {
                   <h4 className="text-sm font-bold text-foreground mb-2">Distribución por Estado</h4>
                   <div className="space-y-2">
                     {Object.entries(detail.byCondition).map(([cond, count]) => {
-                      const cm  = conditionMeta(cond)
+                      const cm = conditionMeta(cond)
                       const pct = Math.round((count / detail.total) * 100)
                       return (
                         <div key={cond}>
