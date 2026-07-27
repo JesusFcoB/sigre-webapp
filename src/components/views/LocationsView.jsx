@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useStore } from '@/store/useStore'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -17,6 +18,7 @@ export default function LocationsView({ navigateTo }) {
   const [qrLocation, setQrLocation] = useState(null);
 
   const locations = useLiveQuery(() => db.locations.toArray()) || [];
+  const role = useStore((state) => state.role);
 
   const downloadQR = (loc) => {
     const canvas = document.getElementById(`qr-canvas-${loc.id}`);
@@ -313,14 +315,16 @@ export default function LocationsView({ navigateTo }) {
                   <Button variant="secondary" size="icon" className="h-9 w-9 rounded-lg" onClick={() => handleEdit(loc)}>
                     <Edit2 className="w-4 h-4 text-foreground" />
                   </Button>
-                  <Button 
-                    variant="destructive" 
-                    size="icon" 
-                    className="h-9 w-9 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/30 dark:hover:bg-red-900/50" 
-                    onClick={() => handleDelete(loc.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {role === 'director' && (
+                    <Button 
+                      variant="destructive" 
+                      size="icon" 
+                      className="h-9 w-9 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/30 dark:hover:bg-red-900/50" 
+                      onClick={() => handleDelete(loc.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

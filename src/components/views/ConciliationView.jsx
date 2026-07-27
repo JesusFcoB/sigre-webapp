@@ -35,6 +35,23 @@ export default function ConciliationView() {
       const worksheet = workbook.Sheets[firstSheetName];
       
       const json = XLSX.utils.sheet_to_json(worksheet);
+      
+      if (json.length === 0) {
+        alert("El archivo Excel está vacío.");
+        setIsProcessing(false);
+        return;
+      }
+
+      const firstRowKeys = Object.keys(json[0]).map(k => k.toLowerCase());
+      const hasFolio = firstRowKeys.some(k => k.includes('folio') || k.includes('inventario') || k.includes('serie'));
+      const hasDesc = firstRowKeys.some(k => k.includes('articulo') || k.includes('descrip'));
+      
+      if (!hasFolio || !hasDesc) {
+        alert("El archivo Excel no tiene el formato oficial. Faltan columnas requeridas (Folio/Serie, Descripción/Artículo).");
+        setIsProcessing(false);
+        return;
+      }
+
       const localItems = await db.items.toArray();
       
       const match = [];

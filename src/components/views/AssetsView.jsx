@@ -78,6 +78,10 @@ export default function AssetsView() {
   const editingItem = useStore(state => state.editingItem)
   const setEditingItem = useStore(state => state.setEditingItem)
 
+  const uniqueDescriptions = useMemo(() => {
+    return Array.from(new Set(allItems.map(i => i.description?.trim()).filter(Boolean))).sort();
+  }, [allItems]);
+
   useEffect(() => {
     if (editingItem) {
       setEditingId(editingItem.id)
@@ -191,10 +195,23 @@ export default function AssetsView() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError("")
-    const serial = formData.serial_number?.trim()
+    let serial = formData.serial_number?.trim()
+    
+    if (!serial) {
+      const year = new Date().getFullYear();
+      const prefix = `SIGRE-${year}-`;
+      const existingFolios = allItems.map(i => i.serial_number).filter(s => s && s.startsWith(prefix));
+      let maxNum = 0;
+      existingFolios.forEach(s => {
+        const n = parseInt(s.replace(prefix, ''), 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      });
+      serial = `${prefix}${(maxNum + 1).toString().padStart(4, '0')}`;
+    }
+
     if (serial) {
       const existing = await db.items.filter(i => i.serial_number === serial).first()
-      if (existing && existing.id !== editingId) { setFormError("Ya existe un bien con este número de serie."); return }
+      if (existing && existing.id !== editingId) { setFormError("Ya existe un bien con este número de serie o folio."); return }
     }
     try {
       if (editingId) {
@@ -311,6 +328,23 @@ export default function AssetsView() {
         </button>
       </div>
 
+      {/* Resumen de Estados */}
+      {activeTab === 'active' && (
+        <div className="flex flex-wrap gap-2 py-1">
+          {CONDITIONS.map(cond => {
+            const count = allItems.filter(i => i.condition === cond.value && i.status !== 'discarded').reduce((acc, i) => acc + (i.quantity || 1), 0);
+            if (count === 0) return null;
+            return (
+              <div key={cond.value} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-card shadow-sm text-xs font-bold animate-in fade-in">
+                <span className={`w-2.5 h-2.5 rounded-full ${cond.color.split(' ')[0]}`} />
+                <span className="text-foreground capitalize">{cond.label}:</span>
+                <span className="text-muted-foreground">{count}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Search bar */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -401,16 +435,18 @@ export default function AssetsView() {
                   </div>
                   {item.serial_number && <p className="text-[10px] text-muted-foreground mt-0.5">Serie: {item.serial_number}</p>}
                 </div>
-                {role === 'director' && (
-                  <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1.5 shrink-0 transition-opacity">
+                  {role !== 'profesor' && (
                     <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={(e) => openEdit(item, e)} title="Editar">
                       <Edit2 className="w-3.5 h-3.5" />
                     </Button>
+                  )}
+                  {role === 'director' && (
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(item.id, e)} title="Eliminar">
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )
           })}
@@ -440,7 +476,12 @@ export default function AssetsView() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-foreground">Descripción *</label>
-                  <Input name="description" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Ej. Minisplit Mirage 2T…" required className="h-12" />
+                  <Input list="desc-suggestions" name="description" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Ej. Minisplit Mirage 2T…" required className="h-12" />
+                  <datalist id="desc-suggestions">
+                    {uniqueDescriptions.map(desc => (
+                      <option key={desc} value={desc} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -484,7 +525,7 @@ export default function AssetsView() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-foreground">Número de Serie / Etiqueta</label>
                   <div className="flex gap-2">
-                    <Input value={formData.serial_number} onChange={e => setFormData(p => ({ ...p, serial_number: e.target.value }))} placeholder="SN-123456789" className="h-12 flex-1" />
+                    <Input value={formData.serial_number} onChange={e => setFormData(p => ({ ...p, serial_number: e.target.value }))} placeholder="Automático si se deja en blanco" className="h-12 flex-1" />
                     <Button type="button" variant="outline" className="h-12 w-12 px-0 shrink-0" onClick={() => setIsScanning(true)}><ScanBarcode className="w-5 h-5 text-muted-foreground" /></Button>
                   </div>
                 </div>

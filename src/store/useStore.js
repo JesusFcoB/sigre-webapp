@@ -3,8 +3,9 @@ import { persist } from 'zustand/middleware'
 
 const savedUsers = JSON.parse(localStorage.getItem('sigre_users') || 'null');
 const defaultUsers = savedUsers || [
-  { id: '1', name: 'Director General', username: 'director', role: 'director' },
-  { id: '2', name: 'Capturista Asignado', username: 'capturista', role: 'capturista' }
+  { id: '1', name: 'Director General', username: 'director', password: '123', role: 'director' },
+  { id: '2', name: 'Capturista Asignado', username: 'capturista', password: '123', role: 'capturista' },
+  { id: '3', name: 'Profesor Base', username: 'profesor', password: '123', role: 'profesor' }
 ];
 
 export const useStore = create(
