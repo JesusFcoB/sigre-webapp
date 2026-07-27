@@ -28,8 +28,147 @@ const CATEGORIES = ["Mobiliario", "Electrónico", "Didáctico", "Otro"]
 
 const conditionMeta = (val) => CONDITIONS.find(c => c.value === val) || { label: val || "—", color: "bg-gray-100 text-gray-600" }
 
+function generateAutoPrefix(name) {
+  if (!name || !name.trim()) return "BN";
+  const cleaned = name.trim().replace(/[^a-zA-Z0-9\s]/g, "");
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return words.slice(0, 4).map(w => w[0]).join("").toUpperCase() || "BN";
+  }
+  return cleaned.substring(0, 3).toUpperCase() || "BN";
+}
+
+function CategoryAutocomplete({ value, onChange, categories }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value || "");
+
+  useEffect(() => {
+    setSearch(value || "");
+  }, [value]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return categories;
+    return categories.filter(c => c.toLowerCase().includes(search.toLowerCase()));
+  }, [categories, search]);
+
+  return (
+    <div className="relative">
+      <Input
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        placeholder="Escribir o seleccionar categoría…"
+        required
+        className="h-11 w-full rounded-xl"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-popover text-popover-foreground rounded-xl border shadow-lg z-50 p-1 space-y-0.5 animate-in fade-in-50 duration-150">
+          {filtered.map((cat) => (
+            <div
+              key={cat}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setSearch(cat);
+                onChange(cat);
+                setOpen(false);
+              }}
+              className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${
+                value === cat ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted font-medium"
+              }`}
+            >
+              <span>{cat}</span>
+              {value === cat && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LocationAutocomplete({ locations, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selectedLoc = useMemo(() => locations.find(l => l.id === value || l.name === value), [locations, value]);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (selectedLoc) {
+      setSearch(selectedLoc.name);
+    } else if (value && typeof value === "string") {
+      setSearch(value);
+    } else {
+      setSearch("");
+    }
+  }, [value, selectedLoc]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return locations;
+    return locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()));
+  }, [locations, search]);
+
+  return (
+    <div className="relative">
+      <Input
+        value={search}
+        onChange={(e) => {
+          const val = e.target.value;
+          setSearch(val);
+          setOpen(true);
+          const exact = locations.find(l => l.name.toLowerCase() === val.toLowerCase());
+          onChange(exact ? exact.id : val);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        placeholder="Buscar nombre del salón o aula…"
+        required
+        className="h-11 w-full rounded-xl"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto bg-popover text-popover-foreground rounded-xl border shadow-lg z-50 p-1 space-y-0.5 animate-in fade-in-50 duration-150">
+          {filtered.map((loc) => (
+            <div
+              key={loc.id}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setSearch(loc.name);
+                onChange(loc.id);
+                setOpen(false);
+              }}
+              className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${
+                value === loc.id || value === loc.name ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted font-medium"
+              }`}
+            >
+              <span className="truncate">{loc.name}</span>
+              {(value === loc.id || value === loc.name) && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function emptyForm() {
-  return { description: "", condition: "", location_id: "", category: "", serial_number: "", photoBase64: "", quantity: 1, maintenance_frequency_months: 0, last_maintenance_date: "" }
+  return {
+    description: "",
+    condition: "nuevo",
+    location_id: "",
+    category: "",
+    serial_number: "",
+    serial_prefix: "",
+    prefix_edited: false,
+    photoBase64: "",
+    quantity: 1,
+    maintenance_frequency_months: 0,
+    last_maintenance_date: "",
+    requires_maintenance: false,
+    breakdown: [{ condition: "nuevo", quantity: 1 }]
+  }
 }
 
 const getMaintenanceInfo = (item) => {
@@ -75,20 +214,36 @@ export default function AssetsView() {
   const locations = useLiveQuery(() => db.locations.toArray(), []) || []
   const role = useStore((state) => state.role);
 
+  const allCategories = useMemo(() => {
+    return Array.from(new Set([...CATEGORIES, ...allItems.map(i => i.category).filter(Boolean)]));
+  }, [allItems]);
+
+  const sumBreakdown = useMemo(() => {
+    return (formData.breakdown || []).reduce((acc, r) => acc + (Number(r.quantity) || 0), 0);
+  }, [formData.breakdown]);
+
   const editingItem = useStore(state => state.editingItem)
   const setEditingItem = useStore(state => state.setEditingItem)
 
   useEffect(() => {
     if (editingItem) {
+      const prefix = editingItem.serial_number ? editingItem.serial_number.split('-')[0] : generateAutoPrefix(editingItem.description);
+      const reqMaint = (editingItem.maintenance_frequency_months > 0 || !!editingItem.last_maintenance_date);
       setEditingId(editingItem.id)
       setFormData({
         description: editingItem.description || "",
-        condition: editingItem.condition || "",
+        condition: editingItem.condition || "nuevo",
         location_id: editingItem.location_id || "",
         category: editingItem.category || "",
         serial_number: editingItem.serial_number || "",
+        serial_prefix: prefix,
+        prefix_edited: !!editingItem.serial_number,
         photoBase64: editingItem.photoBase64 || "",
-        quantity: editingItem.quantity || 1
+        quantity: editingItem.quantity || 1,
+        maintenance_frequency_months: editingItem.maintenance_frequency_months || 0,
+        last_maintenance_date: editingItem.last_maintenance_date || "",
+        requires_maintenance: reqMaint,
+        breakdown: [{ condition: editingItem.condition || "nuevo", quantity: editingItem.quantity || 1 }]
       })
       setFormError("")
       setDrawerOpen(true)
@@ -174,8 +329,24 @@ export default function AssetsView() {
 
   const openEdit = (item, e) => {
     e.stopPropagation()
+    const prefix = item.serial_number ? item.serial_number.split('-')[0] : generateAutoPrefix(item.description);
+    const reqMaint = (item.maintenance_frequency_months > 0 || !!item.last_maintenance_date);
     setEditingId(item.id)
-    setFormData({ description: item.description || "", condition: item.condition || "", location_id: item.location_id || "", category: item.category || "", serial_number: item.serial_number || "", photoBase64: item.photoBase64 || "", quantity: item.quantity || 1, maintenance_frequency_months: item.maintenance_frequency_months || 0, last_maintenance_date: item.last_maintenance_date || "" })
+    setFormData({
+      description: item.description || "",
+      condition: item.condition || "nuevo",
+      location_id: item.location_id || "",
+      category: item.category || "",
+      serial_number: item.serial_number || "",
+      serial_prefix: prefix,
+      prefix_edited: !!item.serial_number,
+      photoBase64: item.photoBase64 || "",
+      quantity: item.quantity || 1,
+      maintenance_frequency_months: item.maintenance_frequency_months || 0,
+      last_maintenance_date: item.last_maintenance_date || "",
+      requires_maintenance: reqMaint,
+      breakdown: [{ condition: item.condition || "nuevo", quantity: item.quantity || 1 }]
+    })
     setFormError("")
     setDrawerOpen(true)
   }
@@ -191,20 +362,101 @@ export default function AssetsView() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError("")
-    const serial = formData.serial_number?.trim()
-    if (serial) {
-      const existing = await db.items.filter(i => i.serial_number === serial).first()
-      if (existing && existing.id !== editingId) { setFormError("Ya existe un bien con este número de serie."); return }
+
+    const totalQty = Number(formData.quantity) || 1;
+    const sumQty = (formData.breakdown || []).reduce((acc, r) => acc + (Number(r.quantity) || 0), 0);
+    if (sumQty !== totalQty) {
+      setFormError(`La suma de cantidades en el desglose (${sumQty}) debe ser exactamente igual a la Cantidad total (${totalQty}).`);
+      return;
     }
+
     try {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      const dateStr = `${dd}${mm}${yy}`;
+
+      const prefix = formData.serial_prefix?.trim() || generateAutoPrefix(formData.description);
+
+      const generateFolio = async (pref, offset = 0) => {
+        const basePrefix = `${pref}-${dateStr}-`;
+        const existing = await db.items.filter(i => (i.serial_number || "").startsWith(basePrefix)).toArray();
+        let maxSeq = 0;
+        existing.forEach(i => {
+          const parts = (i.serial_number || "").split("-");
+          const lastPart = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(lastPart) && lastPart > maxSeq) {
+            maxSeq = lastPart;
+          }
+        });
+        const nextSeq = maxSeq + 1 + offset;
+        return `${basePrefix}${String(nextSeq).padStart(3, '0')}`;
+      };
+
       if (editingId) {
-        await db.items.update(editingId, { description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category, serial_number: serial || null, photoBase64: formData.photoBase64 || null, quantity: Number(formData.quantity) || 1, maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0, last_maintenance_date: formData.last_maintenance_date || null, sync_status: 'pending_update' })
+        const firstRow = formData.breakdown[0] || { condition: "nuevo", quantity: totalQty };
+        let currentSerial = formData.serial_number;
+        if (!currentSerial || !currentSerial.startsWith(`${prefix}-`)) {
+          currentSerial = await generateFolio(prefix, 0);
+        }
+
+        await db.items.update(editingId, {
+          description: formData.description,
+          condition: firstRow.condition,
+          location_id: formData.location_id,
+          category: formData.category,
+          serial_number: currentSerial,
+          photoBase64: formData.photoBase64 || null,
+          quantity: Number(firstRow.quantity) || 1,
+          maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
+          last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null,
+          sync_status: 'pending_update'
+        });
+
+        for (let i = 1; i < formData.breakdown.length; i++) {
+          const row = formData.breakdown[i];
+          const folio = await generateFolio(prefix, i);
+          await db.items.add({
+            id: crypto.randomUUID(),
+            description: formData.description,
+            condition: row.condition,
+            location_id: formData.location_id,
+            category: formData.category || null,
+            serial_number: folio,
+            photoBase64: formData.photoBase64 || null,
+            sync_status: "pending_create",
+            quantity: Number(row.quantity) || 1,
+            maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
+            last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null
+          });
+        }
       } else {
-        await db.items.add({ id: crypto.randomUUID(), description: formData.description, condition: formData.condition, location_id: formData.location_id, category: formData.category || null, serial_number: serial || null, photoBase64: formData.photoBase64 || null, sync_status: "pending_create", quantity: Number(formData.quantity) || 1, maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0, last_maintenance_date: formData.last_maintenance_date || null })
+        for (let i = 0; i < formData.breakdown.length; i++) {
+          const row = formData.breakdown[i];
+          const folio = await generateFolio(prefix, i);
+          await db.items.add({
+            id: crypto.randomUUID(),
+            description: formData.description,
+            condition: row.condition,
+            location_id: formData.location_id,
+            category: formData.category || null,
+            serial_number: folio,
+            photoBase64: formData.photoBase64 || null,
+            sync_status: "pending_create",
+            quantity: Number(row.quantity) || 1,
+            maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
+            last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null
+          });
+        }
       }
-      setDrawerOpen(false)
-      if (navigator.onLine) syncItemsToSupabase()
-    } catch (err) { console.error(err); setFormError("Error al guardar el bien.") }
+
+      setDrawerOpen(false);
+      if (navigator.onLine) syncItemsToSupabase();
+    } catch (err) {
+      console.error(err);
+      setFormError("Error al guardar el bien o lote de bienes.");
+    }
   }
 
   const handleDelete = async (id, e) => {
@@ -268,7 +520,7 @@ export default function AssetsView() {
 
       {isScanning && (
         <BarcodeScanner
-          onScan={(data) => { setFormData(p => ({ ...p, serial_number: data })); setIsScanning(false) }}
+          onScan={(data) => { setFormData(p => ({ ...p, serial_prefix: data.toUpperCase(), prefix_edited: true })); setIsScanning(false) }}
           onClose={() => setIsScanning(false)}
         />
       )}
@@ -437,72 +689,308 @@ export default function AssetsView() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* 1. NOMBRE (antes Descripción) */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-foreground">Descripción *</label>
-                  <Input name="description" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Ej. Minisplit Mirage 2T…" required className="h-12" />
+                  <label className="text-sm font-bold text-foreground">Nombre *</label>
+                  <Input
+                    name="description"
+                    value={formData.description}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData(p => {
+                        const next = { ...p, description: val };
+                        if (!p.prefix_edited) {
+                          next.serial_prefix = generateAutoPrefix(val);
+                        }
+                        return next;
+                      });
+                    }}
+                    placeholder="Ej. Minisplit Mirage 2T, Silla acojinada…"
+                    required
+                    className="h-11 rounded-xl"
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* 2. CATEGORÍA (Autocompletado Escribible) */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold text-foreground">Categoría *</label>
-                    <Select value={formData.category} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))} required>
-                      <option value="" disabled>Seleccionar…</option>
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </Select>
+                    <CategoryAutocomplete
+                      value={formData.category}
+                      onChange={val => setFormData(p => ({ ...p, category: val }))}
+                      categories={allCategories}
+                    />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-foreground">Estado *</label>
-                    <Select value={formData.condition} onChange={e => setFormData(p => ({ ...p, condition: e.target.value }))} required>
-                      <option value="" disabled>Seleccionar…</option>
-                      {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+
+                  {/* 3. SALÓN / UBICACIÓN (Minimalista, solo Nombre) */}
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold text-foreground">Salón / Ubicación *</label>
-                    <Select value={formData.location_id} onChange={e => setFormData(p => ({ ...p, location_id: e.target.value }))} required>
-                      <option value="" disabled>Seleccionar salón…</option>
-                      {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name} — {loc.responsible_name}</option>)}
-                    </Select>
+                    <LocationAutocomplete
+                      locations={locations}
+                      value={formData.location_id}
+                      onChange={idOrName => setFormData(p => ({ ...p, location_id: idOrName }))}
+                    />
                   </div>
+                </div>
+
+                {/* 4. CANTIDAD Y ESTADO (Desglose Dinámico) */}
+                <div className="space-y-2.5 pt-1 border-t">
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold text-foreground">Cantidad *</label>
-                    <Input type="number" name="quantity" value={formData.quantity} onChange={e => setFormData(p => ({ ...p, quantity: e.target.value }))} min="1" required className="h-10" />
+                    <Input
+                      type="number"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={e => {
+                        const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                        setFormData(p => {
+                          if (val === 1) {
+                            return {
+                              ...p,
+                              quantity: 1,
+                              breakdown: [{ condition: p.breakdown[0]?.condition || "nuevo", quantity: 1 }]
+                            };
+                          }
+                          if (p.breakdown.length === 1) {
+                            return {
+                              ...p,
+                              quantity: val,
+                              breakdown: [{ condition: p.breakdown[0]?.condition || "nuevo", quantity: val }]
+                            };
+                          }
+                          return { ...p, quantity: val };
+                        });
+                      }}
+                      min="1"
+                      required
+                      className="h-11 font-bold text-base rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-2 bg-muted/20 p-3 rounded-2xl border">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wide">
+                        <Layers className="w-3.5 h-3.5 text-primary" /> Desglose por Estado *
+                      </label>
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                        sumBreakdown === Number(formData.quantity)
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                          : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                      }`}>
+                        Suma: {sumBreakdown} de {formData.quantity || 0}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {(formData.breakdown || []).map((row, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-background p-2 rounded-xl border shadow-2xs">
+                          <Select
+                            value={row.condition}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(p => ({
+                                ...p,
+                                breakdown: p.breakdown.map((r, i) => i === idx ? { ...r, condition: val } : r)
+                              }));
+                            }}
+                            className="h-9 text-xs font-semibold flex-1 rounded-lg"
+                            required
+                          >
+                            {CONDITIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                          </Select>
+                          <div className="w-24 flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground font-bold">Cant:</span>
+                            <Input
+                              type="number"
+                              min="1"
+                              max={formData.quantity}
+                              value={row.quantity}
+                              disabled={formData.quantity <= 1}
+                              onChange={(e) => {
+                                const val = Math.max(1, parseInt(e.target.value, 10) || 0);
+                                setFormData(p => ({
+                                  ...p,
+                                  breakdown: p.breakdown.map((r, i) => i === idx ? { ...r, quantity: val } : r)
+                                }));
+                              }}
+                              className="h-9 text-xs font-bold px-2 text-center rounded-lg"
+                              required
+                            />
+                          </div>
+                          {Number(formData.quantity) > 1 && (formData.breakdown || []).length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0 rounded-lg"
+                              onClick={() => {
+                                setFormData(p => ({
+                                  ...p,
+                                  breakdown: p.breakdown.filter((_, i) => i !== idx)
+                                }));
+                              }}
+                              title="Eliminar fila"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {Number(formData.quantity) > 1 && sumBreakdown < Number(formData.quantity) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-9 rounded-xl text-xs font-bold border-dashed border-primary/50 text-primary hover:bg-primary/5"
+                        onClick={() => {
+                          const remaining = Number(formData.quantity) - sumBreakdown;
+                          setFormData(p => ({
+                            ...p,
+                            breakdown: [
+                              ...(p.breakdown || []),
+                              { condition: "bueno", quantity: Math.max(1, remaining) }
+                            ]
+                          }));
+                        }}
+                      >
+                        + Agregar otro estado al lote ({Number(formData.quantity) - sumBreakdown} restantes)
+                      </Button>
+                    )}
+
+                    {sumBreakdown !== Number(formData.quantity) && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        La suma en el desglose ({sumBreakdown}) debe ser exactamente igual a la cantidad total ({formData.quantity || 0}).
+                      </p>
+                    )}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-foreground">Frec. Mant. (meses)</label>
-                    <Input type="number" value={formData.maintenance_frequency_months} onChange={e => setFormData(p => ({ ...p, maintenance_frequency_months: e.target.value }))} placeholder="0 = No requiere" min="0" className="h-10" />
+
+                {/* 5. MANTENIMIENTO (Campos Opcionales con Checkbox) */}
+                <div className="space-y-3 bg-muted/20 p-3.5 rounded-2xl border">
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="requires_maint"
+                      checked={formData.requires_maintenance}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setFormData(p => ({
+                          ...p,
+                          requires_maintenance: checked,
+                          maintenance_frequency_months: checked ? (p.maintenance_frequency_months || 6) : 0,
+                          last_maintenance_date: checked ? p.last_maintenance_date : ""
+                        }));
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                    />
+                    <label htmlFor="requires_maint" className="text-sm font-bold text-foreground cursor-pointer select-none">
+                      Requiere mantenimiento
+                    </label>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-foreground">Último Mant.</label>
-                    <Input type="date" value={formData.last_maintenance_date} onChange={e => setFormData(p => ({ ...p, last_maintenance_date: e.target.value }))} className="h-10" />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className={`text-xs font-bold ${formData.requires_maintenance ? "text-foreground" : "text-muted-foreground opacity-50"}`}>
+                        Frec. Mant. (meses)
+                      </label>
+                      <Input
+                        type="number"
+                        value={formData.maintenance_frequency_months}
+                        onChange={e => setFormData(p => ({ ...p, maintenance_frequency_months: e.target.value }))}
+                        placeholder="Ej. 6"
+                        min="1"
+                        disabled={!formData.requires_maintenance}
+                        required={formData.requires_maintenance}
+                        className="h-10 text-sm rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className={`text-xs font-bold ${formData.requires_maintenance ? "text-foreground" : "text-muted-foreground opacity-50"}`}>
+                        Último Mant.
+                      </label>
+                      <Input
+                        type="date"
+                        value={formData.last_maintenance_date}
+                        onChange={e => setFormData(p => ({ ...p, last_maintenance_date: e.target.value }))}
+                        disabled={!formData.requires_maintenance}
+                        className="h-10 text-sm rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* 6. NÚMERO DE SERIE / ETIQUETA (Prefijo Editable) */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-foreground">Número de Serie / Etiqueta</label>
+                  <label className="text-sm font-bold text-foreground">Prefijo de Serie</label>
                   <div className="flex gap-2">
-                    <Input value={formData.serial_number} onChange={e => setFormData(p => ({ ...p, serial_number: e.target.value }))} placeholder="SN-123456789" className="h-12 flex-1" />
-                    <Button type="button" variant="outline" className="h-12 w-12 px-0 shrink-0" onClick={() => setIsScanning(true)}><ScanBarcode className="w-5 h-5 text-muted-foreground" /></Button>
+                    <Input
+                      value={formData.serial_prefix}
+                      onChange={e => setFormData(p => ({ ...p, serial_prefix: e.target.value.toUpperCase(), prefix_edited: true }))}
+                      placeholder="Ej. MIN"
+                      maxLength={10}
+                      className="h-11 font-mono font-bold text-base uppercase tracking-wider flex-1 rounded-xl"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 px-3 shrink-0 rounded-xl gap-1.5 text-xs font-semibold"
+                      onClick={() => setIsScanning(true)}
+                      title="Escanear código de barras para prefijo"
+                    >
+                      <ScanBarcode className="w-4 h-4 text-muted-foreground" />
+                      <span className="hidden sm:inline">Escanear</span>
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    Los folios se generarán automáticamente al guardar (Ej. {formData.serial_prefix || "PRE"}-DDMMYY-001)
+                  </p>
                 </div>
+
+                {/* 7. FOTOGRAFÍA (Referencia Única) */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-foreground">Fotografía (opcional)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold text-foreground">Foto de Referencia (Única por lote)</label>
+                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Opcional</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Se aplicará esta misma imagen de referencia a todas las unidades del lote.</p>
                   {formData.photoBase64 ? (
-                    <div className="relative rounded-xl overflow-hidden border">
-                      <img src={formData.photoBase64} alt="Evidencia" className="w-full h-40 object-cover" />
-                      <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 rounded-full h-8 w-8" onClick={() => setFormData(p => ({ ...p, photoBase64: "" }))}><X className="w-4 h-4" /></Button>
+                    <div className="relative rounded-2xl overflow-hidden border bg-black/5">
+                      <img src={formData.photoBase64} alt="Evidencia de referencia" className="w-full h-44 object-cover" />
+                      <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1 rounded-lg flex items-center gap-1">
+                        <Camera className="w-3.5 h-3.5" /> 1 foto para el lote ({formData.quantity || 1} {Number(formData.quantity) === 1 ? 'unidad' : 'unidades'})
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 rounded-full h-8 w-8 shadow-md"
+                        onClick={() => setFormData(p => ({ ...p, photoBase64: "" }))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
                     </div>
                   ) : (
-                    <div className="relative border-2 border-dashed border-input rounded-xl bg-muted/30 p-5 flex flex-col items-center gap-2 text-muted-foreground hover:bg-muted/50 transition-colors">
-                      <Camera className="w-7 h-7 opacity-40" />
-                      <p className="text-xs font-medium">Toca para capturar imagen</p>
-                      <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageCapture} />
+                    <div className="relative border-2 border-dashed border-input rounded-2xl bg-muted/20 p-6 flex flex-col items-center gap-2 text-muted-foreground hover:bg-muted/40 hover:border-primary/40 transition-all cursor-pointer">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-1">
+                        <Camera className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-bold text-foreground">Toca para capturar Foto de Referencia</p>
+                      <p className="text-xs text-center opacity-70 max-w-xs">Puedes tomar una foto o seleccionar de la galería. Se asociará a todo el lote.</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        onChange={handleImageCapture}
+                      />
                     </div>
                   )}
                 </div>
+
                 <div className="flex gap-3 pt-2 pb-1">
                   <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setDrawerOpen(false)}>Cancelar</Button>
                   <Button type="submit" className="flex-1 h-12 rounded-xl font-bold bg-primary hover:bg-primary/90">
