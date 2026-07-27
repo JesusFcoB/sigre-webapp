@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useStore } from '@/store/useStore';
+import { useStore } from '../../store/useStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
