@@ -15,19 +15,22 @@ const UserManagementView = () => {
 
   const [newName, setNewName] = useState('');
   const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('profesor');
 
   const handleRegister = () => {
-    if (!newName.trim() || !newUsername.trim()) return;
+    if (!newName.trim() || !newUsername.trim() || !newPassword.trim()) return;
     
     addUser({
       name: newName,
       username: newUsername,
+      password: newPassword,
       role: newRole,
     });
     
     setNewName('');
     setNewUsername('');
+    setNewPassword('');
     setNewRole('profesor');
   };
 
@@ -78,13 +81,23 @@ const UserManagementView = () => {
               />
             </div>
             <div className="space-y-1.5">
+              <label className="text-sm font-medium">Contraseña</label>
+              <Input 
+                type="password"
+                placeholder="Contraseña segura" 
+                value={newPassword} 
+                onChange={(e) => setNewPassword(e.target.value)} 
+              />
+            </div>
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Rol</label>
               <Select onChange={(e) => setNewRole(e.target.value)} value={newRole}>
                 <option value="director">Director / Administrador</option>
+                <option value="capturista">Capturista</option>
                 <option value="profesor">Profesor</option>
               </Select>
             </div>
-            <Button className="w-full mt-2" onClick={handleRegister} disabled={!newName || !newUsername}>
+            <Button className="w-full mt-2" onClick={handleRegister} disabled={!newName || !newUsername || !newPassword}>
               <UserPlus className="w-4 h-4 mr-2" />
               Registrar Usuario
             </Button>
@@ -113,8 +126,8 @@ const UserManagementView = () => {
                     <p className="text-sm text-muted-foreground">{u.username}</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <Badge variant={u.role === 'director' ? 'default' : 'secondary'} className="hidden sm:inline-flex">
-                      {u.role === 'director' ? 'Administrador' : 'Profesor'}
+                    <Badge variant={u.role === 'director' ? 'default' : u.role === 'capturista' ? 'outline' : 'secondary'} className="hidden sm:inline-flex">
+                      {u.role === 'director' ? 'Administrador' : u.role === 'capturista' ? 'Capturista' : 'Profesor'}
                     </Badge>
                     <Button 
                       variant="destructive" 

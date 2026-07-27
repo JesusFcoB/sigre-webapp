@@ -185,12 +185,14 @@ function App() {
               onClick={() => setActiveTab('vales')} 
             />
           )}
-          <NavItem 
-            icon={<FileSpreadsheet className="w-5 h-5" />} 
-            label="Conciliar" 
-            isActive={activeTab === 'conciliation'} 
-            onClick={() => setActiveTab('conciliation')} 
-          />
+          {role === 'director' && (
+            <NavItem 
+              icon={<FileSpreadsheet className="w-5 h-5" />} 
+              label="Conciliar" 
+              isActive={activeTab === 'conciliation'} 
+              onClick={() => setActiveTab('conciliation')} 
+            />
+          )}
         </div>
         
         {/* Desktop Sidebar / Topbar equivalent (simplified for prototype) */}
@@ -201,7 +203,7 @@ function App() {
 
            <ButtonNavDesktop icon={<QrCode />} label="Escáner QR" isActive={activeTab==='scanner'} onClick={()=>setActiveTab('scanner')} />
            <ButtonNavDesktop icon={<AlertCircle />} label="Reportar" isActive={activeTab==='report'} onClick={()=>setActiveTab('report')} />
-           <ButtonNavDesktop icon={<FileSpreadsheet />} label="Conciliación" isActive={activeTab==='conciliation'} onClick={()=>setActiveTab('conciliation')} />
+           {role === 'director' && <ButtonNavDesktop icon={<FileSpreadsheet />} label="Conciliación" isActive={activeTab==='conciliation'} onClick={()=>setActiveTab('conciliation')} />}
         </div>
       </nav>
       

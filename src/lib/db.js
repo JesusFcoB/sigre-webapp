@@ -34,3 +34,11 @@ db.version(5).stores({
   vales: '++id, person_name, start_date, end_date, sync_status'
 });
 
+// v6: Add status and solved_at to tickets
+db.version(6).stores({
+  items: 'id, official_inventory_number, description, condition, location_id, category, sync_status, status',
+  locations: 'id, name, responsible_name, sync_status',
+  tickets: '++id, issue_type, description, location_id, sync_status, reported_at, status, solved_at',
+  vales: '++id, person_name, start_date, end_date, sync_status'
+});
+

@@ -252,9 +252,11 @@ export default function DashboardView({ navigateTo }) {
                           <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg shadow-sm" onClick={() => handleEditItem(item)}>
                             <Edit2 className="w-3.5 h-3.5 text-foreground" />
                           </Button>
-                          <Button variant="destructive" size="icon" className="h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 shadow-sm dark:bg-red-950/30 dark:hover:bg-red-900/50" onClick={() => handleDeleteItem(item.id)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          {role === 'director' && (
+                            <Button variant="destructive" size="icon" className="h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 shadow-sm dark:bg-red-950/30 dark:hover:bg-red-900/50" onClick={() => handleDeleteItem(item.id)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -289,9 +291,11 @@ export default function DashboardView({ navigateTo }) {
                           <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg shadow-sm" onClick={() => handleEditTicket(ticket)}>
                             <Edit2 className="w-3.5 h-3.5 text-foreground" />
                           </Button>
-                          <Button variant="destructive" size="icon" className="h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 shadow-sm dark:bg-red-950/30 dark:hover:bg-red-900/50" onClick={() => handleDeleteTicket(ticket.id)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          {role === 'director' && (
+                            <Button variant="destructive" size="icon" className="h-8 w-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 shadow-sm dark:bg-red-950/30 dark:hover:bg-red-900/50" onClick={() => handleDeleteTicket(ticket.id)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
