@@ -4,18 +4,21 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { FileSignature, Plus, X, FileText, CheckCircle2 } from 'lucide-react'
+import { FileSignature, Plus, X, FileText, CheckCircle2, PenTool } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { syncValesToSupabase } from '@/lib/sync'
+import SignatureModal from '@/components/ui/SignatureModal'
 
 export default function ValesView() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [showSignatureModal, setShowSignatureModal] = useState(false)
   const [formData, setFormData] = useState({
     person_name: '',
     start_date: new Date().toISOString().split('T')[0],
     end_date: '',
-    item_id: ''
+    item_id: '',
+    signatureBase64: null
   })
   
   const vales = useLiveQuery(() => db.vales.toArray()) || []
@@ -36,7 +39,7 @@ export default function ValesView() {
         sync_status: 'pending_create'
       })
       setDrawerOpen(false)
-      setFormData({ person_name: '', start_date: new Date().toISOString().split('T')[0], end_date: '', item_id: '' })
+      setFormData({ person_name: '', start_date: new Date().toISOString().split('T')[0], end_date: '', item_id: '', signatureBase64: null })
       if (navigator.onLine) syncValesToSupabase()
     } catch (err) {
       console.error(err)
@@ -83,7 +86,12 @@ export default function ValesView() {
     const finalY = doc.lastAutoTable.finalY || 120
     doc.line(40, finalY + 40, 170, finalY + 40)
     doc.text("Firma de Conformidad", 105, finalY + 50, { align: "center" })
-    doc.text(vale.person_name, 105, finalY + 60, { align: "center" })
+    if (vale.signatureBase64 || vale.signature_base64) {
+      doc.addImage(vale.signatureBase64 || vale.signature_base64, 'PNG', 85, finalY + 55, 40, 20)
+      doc.text(vale.person_name, 105, finalY + 80, { align: "center" })
+    } else {
+      doc.text(vale.person_name, 105, finalY + 60, { align: "center" })
+    }
     
     doc.save(`Vale_${vale.person_name.replace(/\s/g, '_')}_${String(vale.id).slice(0, 5)}.pdf`)
   }
@@ -163,8 +171,26 @@ export default function ValesView() {
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold">Fecha Fin (Opcional)</label>
                     <Input type="date" value={formData.end_date} onChange={e => setFormData(p => ({ ...p, end_date: e.target.value }))} />
-                  </div>
                 </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold">Firma Digital (Opcional)</label>
+                  {formData.signatureBase64 ? (
+                    <div className="relative border rounded-xl p-2 bg-muted/30">
+                      <img src={formData.signatureBase64} alt="Firma" className="h-20 w-auto mx-auto" />
+                      <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 text-destructive" onClick={() => setFormData(p => ({ ...p, signatureBase64: null }))}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2" onClick={() => setShowSignatureModal(true)}>
+                      <PenTool className="w-4 h-4 mr-2" />
+                      Agregar Firma Digital
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1 text-center">Si se deja en blanco, el vale deberá firmarse en papel impreso.</p>
+                </div>
+
                 <div className="flex gap-3 pt-4">
                   <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setDrawerOpen(false)}>Cancelar</Button>
                   <Button type="submit" className="flex-1 h-12 rounded-xl font-bold bg-primary hover:bg-primary/90">
@@ -175,6 +201,16 @@ export default function ValesView() {
             </div>
           </div>
         </div>
+      )}
+
+      {showSignatureModal && (
+        <SignatureModal
+          onClose={() => setShowSignatureModal(false)}
+          onSign={(dataUrl) => {
+            setFormData(p => ({ ...p, signatureBase64: dataUrl }));
+            setShowSignatureModal(false);
+          }}
+        />
       )}
     </div>
   )

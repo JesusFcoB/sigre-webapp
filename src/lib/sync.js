@@ -12,6 +12,7 @@ function mapLocalToRemote(tableName, data) {
     if ('discard_date' in mapped) { mapped.disposal_date = mapped.discard_date; delete mapped.discard_date; }
     delete mapped.discard_location;
     delete mapped.discard_photoBase64;
+    delete mapped.invoiceBase64;
   } else if (tableName === 'tickets') {
     if ('photoBase64' in mapped) { mapped.image = mapped.photoBase64; delete mapped.photoBase64; }
     if (mapped.location_id === 'temp-location-id') mapped.location_id = null;
