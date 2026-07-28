@@ -27,14 +27,14 @@ export default function DashboardView({ navigateTo }) {
 
   const totalLocationsCount = useLiveQuery(() => db.locations.count()) || 0;
 
-  const allItems = useLiveQuery(() => db.items.reverse().sortBy('id')) || [];
-  const allTickets = useLiveQuery(() => db.tickets.reverse().sortBy('id')) || [];
+  const allItems = useLiveQuery(() => db.items.orderBy('id').reverse().toArray()) || [];
+  const allTickets = useLiveQuery(() => db.tickets.orderBy('id').reverse().toArray()) || [];
 
   const data = [
-    { name: 'Nuevos', value: allItems.filter(i => i.condition === 'Nuevo').length, color: '#3b82f6' },
-    { name: 'Buenos', value: allItems.filter(i => i.condition === 'Bueno').length, color: '#22c55e' },
-    { name: 'Regulares', value: allItems.filter(i => i.condition === 'Regular').length, color: '#eab308' },
-    { name: 'Malos', value: allItems.filter(i => i.condition === 'Malo').length, color: '#ef4444' },
+    { name: 'Nuevos', value: allItems.filter(i => (i.condition || '').toLowerCase() === 'nuevo').length, color: '#3b82f6' },
+    { name: 'Buenos', value: allItems.filter(i => (i.condition || '').toLowerCase() === 'bueno').length, color: '#22c55e' },
+    { name: 'Regulares', value: allItems.filter(i => (i.condition || '').toLowerCase() === 'regular').length, color: '#eab308' },
+    { name: 'Malos', value: allItems.filter(i => (i.condition || '').toLowerCase() === 'malo').length, color: '#ef4444' },
   ];
   const handleEditItem = (item) => {
     setEditingItem(item);
