@@ -161,6 +161,7 @@ function emptyForm() {
     serial_prefix: "",
     prefix_edited: false,
     photoBase64: "",
+    invoiceBase64: "",
     quantity: 1,
     maintenance_frequency_months: 0,
     last_maintenance_date: "",
@@ -241,6 +242,7 @@ export default function AssetsView() {
         serial_prefix: prefix,
         prefix_edited: !!editingItem.serial_number,
         photoBase64: editingItem.photoBase64 || "",
+        invoiceBase64: editingItem.invoiceBase64 || "",
         quantity: editingItem.quantity || 1,
         maintenance_frequency_months: editingItem.maintenance_frequency_months || 0,
         last_maintenance_date: editingItem.last_maintenance_date || "",
@@ -343,6 +345,7 @@ export default function AssetsView() {
       serial_prefix: prefix,
       prefix_edited: !!item.serial_number,
       photoBase64: item.photoBase64 || "",
+      invoiceBase64: item.invoiceBase64 || "",
       quantity: item.quantity || 1,
       maintenance_frequency_months: item.maintenance_frequency_months || 0,
       last_maintenance_date: item.last_maintenance_date || "",
@@ -358,6 +361,14 @@ export default function AssetsView() {
     if (!file) return
     const reader = new FileReader()
     reader.onloadend = () => setFormData(p => ({ ...p, photoBase64: reader.result }))
+    reader.readAsDataURL(file)
+  }
+
+  const handleInvoiceCapture = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onloadend = () => setFormData(p => ({ ...p, invoiceBase64: reader.result }))
     reader.readAsDataURL(file)
   }
 
@@ -397,6 +408,7 @@ export default function AssetsView() {
           category: formData.category,
           serial_number: currentSerial,
           photoBase64: formData.photoBase64 || null,
+          invoiceBase64: formData.invoiceBase64 || null,
           quantity: Number(firstRow.quantity) || 1,
           maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
           last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null,
@@ -414,6 +426,7 @@ export default function AssetsView() {
             category: formData.category || null,
             serial_number: folio,
             photoBase64: formData.photoBase64 || null,
+            invoiceBase64: formData.invoiceBase64 || null,
             sync_status: "pending_create",
             quantity: Number(row.quantity) || 1,
             maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
@@ -432,6 +445,7 @@ export default function AssetsView() {
             category: formData.category || null,
             serial_number: folio,
             photoBase64: formData.photoBase64 || null,
+            invoiceBase64: formData.invoiceBase64 || null,
             sync_status: "pending_create",
             quantity: Number(row.quantity) || 1,
             maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
@@ -932,44 +946,71 @@ export default function AssetsView() {
                 </div>
 
                 {/* 7. FOTOGRAFÍA (Referencia Única) */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-foreground">Foto de Referencia (Única por lote)</label>
-                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Opcional</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-foreground">Foto de Referencia</label>
+                      <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Opcional</span>
+                    </div>
+                    {formData.photoBase64 ? (
+                      <div className="relative rounded-2xl overflow-hidden border bg-black/5">
+                        <img src={formData.photoBase64} alt="Evidencia de referencia" className="w-full h-32 object-cover" />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 rounded-full h-8 w-8 shadow-md"
+                          onClick={() => setFormData(p => ({ ...p, photoBase64: "" }))}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="relative border-2 border-dashed border-input rounded-2xl bg-muted/20 p-4 flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground hover:bg-muted/40 transition-all cursor-pointer">
+                        <Camera className="w-6 h-6 opacity-50" />
+                        <p className="text-xs font-bold text-center">Toca para Foto</p>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          onChange={handleImageCapture}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground">Se aplicará esta misma imagen de referencia a todas las unidades del lote.</p>
-                  {formData.photoBase64 ? (
-                    <div className="relative rounded-2xl overflow-hidden border bg-black/5">
-                      <img src={formData.photoBase64} alt="Evidencia de referencia" className="w-full h-44 object-cover" />
-                      <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-1 rounded-lg flex items-center gap-1">
-                        <Camera className="w-3.5 h-3.5" /> 1 foto para el lote ({formData.quantity || 1} {Number(formData.quantity) === 1 ? 'unidad' : 'unidades'})
-                      </div>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 rounded-full h-8 w-8 shadow-md"
-                        onClick={() => setFormData(p => ({ ...p, photoBase64: "" }))}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-foreground">Factura o Ticket</label>
+                      <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Opcional</span>
                     </div>
-                  ) : (
-                    <div className="relative border-2 border-dashed border-input rounded-2xl bg-muted/20 p-6 flex flex-col items-center gap-2 text-muted-foreground hover:bg-muted/40 hover:border-primary/40 transition-all cursor-pointer">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-1">
-                        <Camera className="w-6 h-6" />
+                    {formData.invoiceBase64 ? (
+                      <div className="relative rounded-2xl overflow-hidden border bg-black/5">
+                        <img src={formData.invoiceBase64} alt="Factura de compra" className="w-full h-32 object-cover" />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2 rounded-full h-8 w-8 shadow-md"
+                          onClick={() => setFormData(p => ({ ...p, invoiceBase64: "" }))}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <p className="text-sm font-bold text-foreground">Toca para capturar Foto de Referencia</p>
-                      <p className="text-xs text-center opacity-70 max-w-xs">Puedes tomar una foto o seleccionar de la galería. Se asociará a todo el lote.</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                        onChange={handleImageCapture}
-                      />
-                    </div>
-                  )}
+                    ) : (
+                      <div className="relative border-2 border-dashed border-input rounded-2xl bg-muted/20 p-4 flex flex-col items-center justify-center h-32 gap-2 text-muted-foreground hover:bg-muted/40 transition-all cursor-pointer">
+                        <FileText className="w-6 h-6 opacity-50" />
+                        <p className="text-xs font-bold text-center">Subir Factura</p>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          onChange={handleInvoiceCapture}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-2 pb-1">
@@ -1067,6 +1108,17 @@ export default function AssetsView() {
                     })}
                   </div>
                 </div>
+
+                {detailItem.invoiceBase64 && (
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" /> Factura / Evidencia de Compra
+                    </h4>
+                    <div className="rounded-xl border bg-black/5 overflow-hidden">
+                      <img src={detailItem.invoiceBase64} alt="Factura" className="w-full max-h-48 object-contain" />
+                    </div>
+                  </div>
+                )}
 
                 {(() => {
                   const maint = getMaintenanceInfo(detailItem);
