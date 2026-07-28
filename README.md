@@ -16,6 +16,7 @@ Una Aplicación Web Progresiva (PWA) enfocada en la gestión de inventario, mant
 *   **Módulo Independiente de "Bajas":** Proceso rápido y seguro para descartar artículos por obsolescencia, daño o robo, registrando evidencia fotográfica.
 *   **Gestión Administrativa de Usuarios:** Panel dedicado donde el Director puede dar de alta cuentas, modificar roles (Director, Capturista, Profesor), eliminar usuarios, y forzar la restauración de contraseñas de forma segura (vía SQL RPC) sin requerir verificación por correo (ideal para entornos escolares controlados).
 *   **Dashboard Directivo:** Panel de control con métricas en tiempo real y gráficas interactivas que reflejan el estado del inventario (Nuevo, Bueno, Regular, Malo) alimentadas directamente de la base de datos local.
+*   **Sincronización Inteligente de Archivos:** Las fotografías, firmas digitales y facturas se capturan localmente, se optimizan (WebP) y se suben automáticamente a la nube a través de **Supabase Storage**, manteniendo la base de datos de PostgreSQL limpia y rápida guardando únicamente las URLs públicas.
 *   **Semáforo de Mantenimiento Preventivo:** Calcula dinámicamente alertas de servicio técnico según frecuencia asignada (Verde, Amarillo, Rojo).
 *   **Interfaz Optimizada para Móviles (Mobile-First):** Acciones siempre accesibles desde teléfonos mediante Bottom Navigation.
 
@@ -49,11 +50,10 @@ Si prefieres usar la terminal (Símbolo del sistema, PowerShell, o bash), sigue 
 ## Tecnologías utilizadas (Stack Tecnológico)
 *   **Frontend:** React.js con Vite, Tailwind CSS y shadcn/ui.
 *   **Motor Offline:** Dexie.js (para base de datos local) y Zustand (manejo de estados).
-*   **Backend / Auth / BD:** Supabase (PostgreSQL, Supabase Auth).
+*   **Backend / Auth / BD:** Supabase (PostgreSQL, Supabase Auth y Storage).
 *   **Componentes Adicionales:** `html5-qrcode` para lectura de cámaras, `SheetJS (xlsx)` para parseo de Excels, `Recharts` para las métricas visuales, y `jsPDF` para exportación de vales.
 
 ---
 ## ¿Qué falta por implementar / Mejoras Futuras (Roadmap)?
-*   **Sincronización de Facturas (Supabase Storage):** Modificar la base de datos de Supabase y la lógica de sincronización para subir a la nube las fotografías de facturas y evidencia que actualmente solo se almacenan de forma local en los dispositivos.
 *   **Impresión de Etiquetas y Códigos QR en PDF:** Crear un módulo para seleccionar múltiples bienes y generar plantillas en PDF listas para imprimir sus etiquetas de identificación física (para posteriormente ser escaneadas).
 *   **Historial de Depreciación y Movimientos:** Mantener un registro contable del valor estimado del equipo a lo largo del tiempo, así como una bitácora de los movimientos físicos (cambios de salón o responsables).
