@@ -78,7 +78,7 @@ export default function SignatureModal({ onSign, onClose, title = "Firma Autógr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center p-4 border-b bg-muted/30">
           <div className="flex items-center gap-2 text-foreground font-bold">
