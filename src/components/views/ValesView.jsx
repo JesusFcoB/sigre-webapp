@@ -84,14 +84,14 @@ export default function ValesView() {
     })
     
     const finalY = doc.lastAutoTable.finalY || 120
+    
+    if (vale.signatureBase64 || vale.signature_base64) {
+      doc.addImage(vale.signatureBase64 || vale.signature_base64, 'PNG', 85, finalY + 18, 40, 22)
+    }
+
     doc.line(40, finalY + 40, 170, finalY + 40)
     doc.text("Firma de Conformidad", 105, finalY + 50, { align: "center" })
-    if (vale.signatureBase64 || vale.signature_base64) {
-      doc.addImage(vale.signatureBase64 || vale.signature_base64, 'PNG', 85, finalY + 55, 40, 20)
-      doc.text(vale.person_name, 105, finalY + 80, { align: "center" })
-    } else {
-      doc.text(vale.person_name, 105, finalY + 60, { align: "center" })
-    }
+    doc.text(vale.person_name, 105, finalY + 60, { align: "center" })
     
     doc.save(`Vale_${vale.person_name.replace(/\s/g, '_')}_${String(vale.id).slice(0, 5)}.pdf`)
   }
