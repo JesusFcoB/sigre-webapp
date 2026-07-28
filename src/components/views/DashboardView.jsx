@@ -9,13 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { Wifi, WifiOff, Box, AlertTriangle, CheckCircle2, List, X, ExternalLink, Edit2, Trash2, Moon, Sun, MonitorSmartphone, School, Users } from "lucide-react"
 
-const data = [
-  { name: 'Nuevos', value: 120, color: '#3b82f6' },
-  { name: 'Buenos', value: 350, color: '#22c55e' },
-  { name: 'Regulares', value: 80, color: '#eab308' },
-  { name: 'Malos', value: 25, color: '#ef4444' },
-];
-
 export default function DashboardView({ navigateTo }) {
   const isOnline = useStore((state) => state.isOnline)
   const setOnlineStatus = useStore((state) => state.setOnlineStatus)
@@ -23,7 +16,7 @@ export default function DashboardView({ navigateTo }) {
   const setEditingTicket = useStore((state) => state.setEditingTicket)
   const theme = useStore((state) => state.theme)
   const toggleTheme = useStore((state) => state.toggleTheme)
-  const role = useStore((state) => state.role)
+  const role = (useStore((state) => state.role) || '').toLowerCase()
 
   // Consultas en vivo a Dexie
   const totalItemsCount = useLiveQuery(() => db.items.count()) || 0;
@@ -37,6 +30,12 @@ export default function DashboardView({ navigateTo }) {
   const allItems = useLiveQuery(() => db.items.reverse().sortBy('id')) || [];
   const allTickets = useLiveQuery(() => db.tickets.reverse().sortBy('id')) || [];
 
+  const data = [
+    { name: 'Nuevos', value: allItems.filter(i => i.condition === 'Nuevo').length, color: '#3b82f6' },
+    { name: 'Buenos', value: allItems.filter(i => i.condition === 'Bueno').length, color: '#22c55e' },
+    { name: 'Regulares', value: allItems.filter(i => i.condition === 'Regular').length, color: '#eab308' },
+    { name: 'Malos', value: allItems.filter(i => i.condition === 'Malo').length, color: '#ef4444' },
+  ];
   const handleEditItem = (item) => {
     setEditingItem(item);
     navigateTo('assets');
