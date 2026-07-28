@@ -25,11 +25,13 @@ const UserManagementView = () => {
 
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
+    setErrorMsg('');
     try {
       const data = await getUsersList();
       setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
+      setErrorMsg('Error al cargar usuarios: ' + (error.message || 'Desconocido'));
     } finally {
       setIsLoadingUsers(false);
     }
