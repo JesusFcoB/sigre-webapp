@@ -171,6 +171,7 @@ export default function ValesView() {
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold">Fecha Fin (Opcional)</label>
                     <Input type="date" value={formData.end_date} onChange={e => setFormData(p => ({ ...p, end_date: e.target.value }))} />
+                  </div>
                 </div>
                 
                 <div className="space-y-1.5">
