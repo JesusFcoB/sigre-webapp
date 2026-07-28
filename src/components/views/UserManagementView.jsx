@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UserPlus, Users, ShieldAlert, CheckCircle2 } from 'lucide-react';
-import { createUser } from '@/lib/auth';
+import { Loader2, UserPlus, Users, ShieldAlert, CheckCircle2, Trash2, Edit2 } from 'lucide-react';
+import { createUser, getUsersList, deleteUserAccount, updateUserRole } from '@/lib/auth';
 
 const UserManagementView = () => {
   const currentUser = useStore((state) => state.user);
@@ -20,6 +20,25 @@ const UserManagementView = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [users, setUsers] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+
+  const fetchUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const data = await getUsersList();
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   const handleRegister = async () => {
     if (!newUsername.trim() || !newPassword.trim()) return;
     
@@ -28,16 +47,36 @@ const UserManagementView = () => {
     setErrorMsg('');
     try {
       await createUser(newUsername, newPassword, newRole, newName);
-      setSuccessMsg(`Usuario ${newName} creado exitosamente.`);
+      setSuccessMsg(`Usuario ${newName || newUsername} creado exitosamente.`);
       setNewName('');
       setNewUsername('');
       setNewPassword('');
       setNewRole('profesor');
+      await fetchUsers(); // Refresh list
     } catch (err) {
       console.error(err);
       setErrorMsg(err.message || 'Error al crear usuario.');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDeleteUser = async (id, email) => {
+    if (!window.confirm(`¿Estás seguro de eliminar permanentemente al usuario ${email}?`)) return;
+    try {
+      await deleteUserAccount(id);
+      await fetchUsers();
+    } catch (error) {
+      alert(error.message || 'Error al eliminar usuario');
+    }
+  };
+
+  const handleRoleChange = async (id, newRole) => {
+    try {
+      await updateUserRole(id, newRole);
+      await fetchUsers();
+    } catch (error) {
+      alert(error.message || 'Error al actualizar rol');
     }
   };
 
@@ -53,9 +92,9 @@ const UserManagementView = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Formulario de Alta */}
-        <Card className="md:col-span-1 border-primary/20 shadow-sm h-fit">
+        <Card className="lg:col-span-1 border-primary/20 shadow-sm h-fit">
           <CardHeader>
             <CardTitle className="text-lg">Nuevo Usuario</CardTitle>
             <CardDescription>Crea credenciales locales.</CardDescription>
@@ -116,15 +155,79 @@ const UserManagementView = () => {
           </CardContent>
         </Card>
 
-        {/* Lista de Usuarios Removida Temporalmente */}
-        <Card className="md:col-span-2 shadow-sm bg-muted/20">
+        {/* Directorio de Usuarios */}
+        <Card className="lg:col-span-2 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg text-muted-foreground">Directorio de Usuarios</CardTitle>
+            <CardTitle className="text-lg flex justify-between items-center">
+              Directorio de Usuarios
+              <Button variant="outline" size="sm" onClick={fetchUsers} disabled={isLoadingUsers}>
+                {isLoadingUsers ? <Loader2 className="w-4 h-4 animate-spin" /> : "Actualizar"}
+              </Button>
+            </CardTitle>
             <CardDescription>
-              Para ver el directorio completo de todos los usuarios registrados, debes iniciar sesión en el panel de control de tu proyecto en Supabase (Sección Authentication). 
-              Esta pantalla está optimizada únicamente para dar de alta accesos rápidamente.
+              Lista completa de usuarios registrados en el sistema.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            {isLoadingUsers ? (
+              <div className="flex justify-center py-8 text-muted-foreground">
+                <Loader2 className="w-8 h-8 animate-spin" />
+              </div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No se encontraron usuarios.</p>
+                <p className="text-xs mt-1">Si acabas de crear funciones SQL, asegúrate de que se ejecutaron sin errores.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
+                    <tr>
+                      <th className="px-4 py-3 rounded-tl-lg">Usuario</th>
+                      <th className="px-4 py-3">Rol</th>
+                      <th className="px-4 py-3">Creado</th>
+                      <th className="px-4 py-3 rounded-tr-lg text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(u => (
+                      <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-foreground">{u.name || 'Sin Nombre'}</div>
+                          <div className="text-xs text-muted-foreground">{u.email}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Select 
+                            value={u.role || 'profesor'} 
+                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                            className="h-8 text-xs font-medium w-[120px]"
+                          >
+                            <option value="director">Director</option>
+                            <option value="capturista">Capturista</option>
+                            <option value="profesor">Profesor</option>
+                          </Select>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {new Date(u.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                            onClick={() => handleDeleteUser(u.id, u.email)}
+                            title="Eliminar Usuario"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
         </Card>
       </div>
     </div>

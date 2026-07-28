@@ -41,3 +41,19 @@ export const createUser = async (email, password, role, name) => {
   if (error) throw error
   return data
 }
+
+export const getUsersList = async () => {
+  const { data, error } = await supabase.rpc('get_all_users')
+  if (error) throw error
+  return data
+}
+
+export const deleteUserAccount = async (targetUserId) => {
+  const { error } = await supabase.rpc('delete_user', { target_user_id: targetUserId })
+  if (error) throw error
+}
+
+export const updateUserRole = async (targetUserId, newRole) => {
+  const { error } = await supabase.rpc('update_user_role', { target_user_id: targetUserId, new_role: newRole })
+  if (error) throw error
+}
