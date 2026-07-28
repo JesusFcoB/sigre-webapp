@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { syncItemsToSupabase } from "@/lib/sync"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useStore } from "@/store/useStore"
+import { compressImage } from '@/lib/imageUtils'
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -356,20 +357,28 @@ export default function AssetsView() {
     setDrawerOpen(true)
   }
 
-  const handleImageCapture = (e) => {
+  const handleImageCapture = async (e) => {
     const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onloadend = () => setFormData(p => ({ ...p, photoBase64: reader.result }))
-    reader.readAsDataURL(file)
+    if (file) {
+      try {
+        const compressedBase64 = await compressImage(file);
+        setFormData(p => ({ ...p, photoBase64: compressedBase64 }))
+      } catch (err) {
+        console.error("Error comprimiendo imagen", err);
+      }
+    }
   }
 
-  const handleInvoiceCapture = (e) => {
+  const handleInvoiceCapture = async (e) => {
     const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onloadend = () => setFormData(p => ({ ...p, invoiceBase64: reader.result }))
-    reader.readAsDataURL(file)
+    if (file) {
+      try {
+        const compressedBase64 = await compressImage(file);
+        setFormData(p => ({ ...p, invoiceBase64: compressedBase64 }))
+      } catch (err) {
+        console.error("Error comprimiendo factura", err);
+      }
+    }
   }
 
   const generateFolio = (prefixStr, indexOffset = 0) => {

@@ -41,4 +41,10 @@ db.version(6).stores({
   tickets: '++id, issue_type, description, location_id, sync_status, reported_at, status, solved_at',
   vales: '++id, person_name, start_date, end_date, sync_status'
 });
-
+// v7: Add specific_location to tickets
+db.version(7).stores({
+  items: 'id, official_inventory_number, description, condition, location_id, category, sync_status, status',
+  locations: 'id, name, responsible_name, sync_status',
+  tickets: '++id, issue_type, description, location_id, specific_location, sync_status, reported_at, status, solved_at',
+  vales: '++id, person_name, start_date, end_date, sync_status'
+});

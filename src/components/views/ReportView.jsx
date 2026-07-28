@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useStore } from '@/store/useStore'
 import { syncTicketsToSupabase } from '@/lib/sync'
+import { compressImage } from '@/lib/imageUtils'
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
@@ -13,13 +14,14 @@ import { Camera, Save, X, Info, AlertCircle, Edit2, Trash2, CheckCircle2, Shield
 
 export default function ReportView() {
   const [activeTab, setActiveTab] = useState('pending');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     issue_type: '',
     description: '',
     photoBase64: '',
-    location_id: ''
+    location_id: '',
+    specific_location: ''
   })
   
   const [errorMsg, setErrorMsg] = useState('')
@@ -47,20 +49,22 @@ export default function ReportView() {
         issue_type: editingTicket.issue_type || '',
         description: editingTicket.description || '',
         photoBase64: editingTicket.photoBase64 || '',
-        location_id: editingTicket.location_id || ''
+        location_id: editingTicket.location_id || '',
+        specific_location: editingTicket.specific_location || ''
       })
-      setIsModalOpen(true);
+      setDrawerOpen(true);
     }
   }, [editingTicket])
 
-  const handleImageCapture = (e) => {
+  const handleImageCapture = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, photoBase64: reader.result }))
+      try {
+        const compressedBase64 = await compressImage(file);
+        setFormData(prev => ({ ...prev, photoBase64: compressedBase64 }));
+      } catch (err) {
+        console.error("Error comprimiendo imagen", err);
       }
-      reader.readAsDataURL(file)
     }
   }
 
@@ -88,8 +92,8 @@ export default function ReportView() {
         })
       }
       
-      setFormData({ issue_type: '', description: '', photoBase64: '', location_id: '' })
-      setIsModalOpen(false)
+      setFormData({ issue_type: '', description: '', photoBase64: '', location_id: '', specific_location: '' })
+      setDrawerOpen(false)
       
       if (navigator.onLine) {
         syncTicketsToSupabase()
@@ -102,8 +106,8 @@ export default function ReportView() {
 
   const cancelEdit = () => {
     setEditingTicket(null)
-    setFormData({ issue_type: '', description: '', photoBase64: '', location_id: '' })
-    setIsModalOpen(false)
+    setFormData({ issue_type: '', description: '', photoBase64: '', location_id: '', specific_location: '' })
+    setDrawerOpen(false)
     setErrorMsg('')
   }
 
@@ -157,7 +161,7 @@ export default function ReportView() {
           </button>
         </div>
         
-        <Button onClick={() => setIsModalOpen(true)} className="h-10 rounded-xl whitespace-nowrap">
+        <Button onClick={() => setDrawerOpen(true)} className="h-10 rounded-xl whitespace-nowrap">
           <PlusCircle className="w-4 h-4 mr-2" />
           <span className="hidden sm:inline">Nuevo Reporte</span>
           <span className="sm:hidden">Nuevo</span>
@@ -186,7 +190,10 @@ export default function ReportView() {
                       )}
                       <div className="flex flex-col overflow-hidden">
                         <p className="font-bold text-base truncate capitalize">{ticket.issue_type}</p>
-                        <p className="text-sm text-muted-foreground truncate">{locationMap[ticket.location_id]?.name || "Sin Ubicación"}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {locationMap[ticket.location_id]?.name || "Sin Ubicación"} 
+                          {ticket.specific_location ? ` (${ticket.specific_location})` : ''}
+                        </p>
                         <Badge variant="outline" className="w-fit mt-1 text-[10px] bg-yellow-50 text-yellow-700 border-yellow-200">
                           {new Date(ticket.reported_at).toLocaleDateString()}
                         </Badge>
@@ -241,7 +248,10 @@ export default function ReportView() {
                           </Button>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">{locationMap[ticket.location_id]?.name || "Sin Ubicación"}</p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {locationMap[ticket.location_id]?.name || "Sin Ubicación"} 
+                        {ticket.specific_location ? ` (${ticket.specific_location})` : ''}
+                      </p>
                     </div>
                   </div>
                   <div className="bg-muted/30 p-3 rounded-xl">
@@ -258,17 +268,18 @@ export default function ReportView() {
         )}
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-background w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="font-bold text-lg">{editingTicket ? 'Editar Reporte' : 'Nuevo Reporte'}</h3>
-              <Button variant="ghost" size="icon" onClick={cancelEdit} className="h-8 w-8 rounded-full">
-                <X className="w-5 h-5" />
+      {drawerOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelEdit} />
+          <div className="relative w-full max-w-md bg-card rounded-3xl shadow-2xl z-10 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="font-bold text-xl">{editingTicket ? 'Editar Reporte' : 'Nuevo Reporte'}</h3>
+              <Button variant="ghost" size="icon" onClick={cancelEdit} className="h-8 w-8 rounded-full bg-muted hover:bg-muted/80">
+                <X className="w-4 h-4" />
               </Button>
             </div>
             
-            <div className="p-4 overflow-y-auto">
+            <div className="p-6 overflow-y-auto">
               {errorMsg && (
                 <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-center gap-2 mb-4 border border-red-100">
                   <AlertCircle className="w-5 h-5 shrink-0" />
@@ -277,8 +288,8 @@ export default function ReportView() {
               )}
               
               <form id="report-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Tipo de Falla</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-foreground">Tipo de Falla *</label>
                   <Select required name="issue_type" value={formData.issue_type} onChange={handleInputChange}>
                     <option value="" disabled>Selecciona una categoría...</option>
                     <option value="electrica">Falla Eléctrica (Contactos, Focos)</option>
@@ -289,30 +300,41 @@ export default function ReportView() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Ubicación (Salón / Área)</label>
-                  <Select name="location_id" value={formData.location_id} onChange={handleInputChange} required>
-                    <option value="" disabled>¿Dónde está el problema?</option>
-                    {locations.map(loc => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
-                  </Select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-foreground">Salón / Área *</label>
+                    <Select name="location_id" value={formData.location_id} onChange={handleInputChange} required>
+                      <option value="" disabled>Seleccionar...</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={loc.id}>{loc.name}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-foreground">Lugar Específico</label>
+                    <Input 
+                      name="specific_location" 
+                      value={formData.specific_location} 
+                      onChange={handleInputChange} 
+                      placeholder="Ej. Esquina derecha" 
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Descripción del Problema</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-foreground">Descripción del Problema *</label>
                   <Textarea 
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
                     placeholder="Describe detalladamente cuál es la falla..." 
-                    className="min-h-[100px] text-sm resize-none rounded-xl"
+                    className="min-h-[80px] text-sm resize-none rounded-xl"
                     required
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Evidencia Fotográfica (Opcional)</label>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-foreground">Evidencia (Opcional)</label>
                   {formData.photoBase64 ? (
                     <div className="relative rounded-xl overflow-hidden border">
                       <img src={formData.photoBase64} alt="Evidencia" className="w-full h-32 object-cover" />
@@ -328,14 +350,17 @@ export default function ReportView() {
                     </div>
                   )}
                 </div>
+                
+                <div className="flex gap-3 pt-2">
+                  <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl font-bold" onClick={cancelEdit}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="flex-1 h-12 rounded-xl font-bold bg-primary hover:bg-primary/90">
+                    <CheckCircle2 className="w-4 h-4 mr-2" /> 
+                    {editingTicket ? 'Actualizar' : 'Guardar'}
+                  </Button>
+                </div>
               </form>
-            </div>
-            
-            <div className="p-4 border-t bg-muted/20">
-              <Button type="submit" form="report-form" className="w-full h-12 text-base rounded-xl font-bold bg-primary hover:bg-primary/90">
-                <Save className="w-5 h-5 mr-2" />
-                {editingTicket ? 'Actualizar Reporte' : 'Guardar Reporte'}
-              </Button>
             </div>
           </div>
         </div>

@@ -42,12 +42,16 @@ export default function ConciliationView() {
         return;
       }
 
-      const firstRowKeys = Object.keys(json[0]).map(k => k.toLowerCase());
-      const hasFolio = firstRowKeys.some(k => k.includes('folio') || k.includes('inventario') || k.includes('serie'));
-      const hasDesc = firstRowKeys.some(k => k.includes('articulo') || k.includes('descrip'));
+      const firstRowKeys = Object.keys(json[0]).map(k => k.trim());
       
-      if (!hasFolio || !hasDesc) {
-        alert("El archivo Excel no tiene el formato oficial. Faltan columnas requeridas (Folio/Serie, Descripción/Artículo).");
+      const requiredColumns = ['AULA', 'DESCRIPCIÓN', 'CANTIDAD', 'CONDICIÓN', 'NÚMERO DE SERIE', 'NÚMERO DE INVENTARIO'];
+      
+      const hasAllColumns = requiredColumns.every(col => 
+        firstRowKeys.some(k => k.toUpperCase() === col)
+      );
+      
+      if (!hasAllColumns) {
+        alert("El archivo Excel no tiene el formato oficial de la SEP. Faltan columnas requeridas o tienen un nombre incorrecto (ej. AULA, DESCRIPCIÓN, NÚMERO DE INVENTARIO).");
         setIsProcessing(false);
         return;
       }
@@ -66,11 +70,17 @@ export default function ConciliationView() {
       });
 
       json.forEach((row) => {
-        const folioStr = row['Folio'] || row['NÚMERO DE INVENTARIO'] || row['NÚMERO DE SERIE'] || row['numero_inventario'] || row['No. Serie'] || row['serial_number'];
-        const articuloStr = row['Articulo'] || row['DESCRIPCIÓN'] || row['Descripción'] || row['descripcion'];
-        const ubicacionStr = row['Ubicacion'] || row['AULA'] || row['ubicacion'] || row['Lugar'];
-        const cantidadVal = parseInt(row['CANTIDAD'] || row['Cantidad'] || row['cantidad'] || 1, 10);
-        const condicionStr = row['CONDICIÓN'] || row['Condicion'] || row['condicion'] || 'nuevo';
+        // Find exact keys disregarding case differences strictly on the known columns
+        const getVal = (colName) => {
+          const key = Object.keys(row).find(k => k.trim().toUpperCase() === colName);
+          return key ? row[key] : undefined;
+        };
+
+        const folioStr = getVal('NÚMERO DE INVENTARIO') || getVal('NÚMERO DE SERIE');
+        const articuloStr = getVal('DESCRIPCIÓN');
+        const ubicacionStr = getVal('AULA');
+        const cantidadVal = parseInt(getVal('CANTIDAD') || 1, 10);
+        const condicionStr = getVal('CONDICIÓN') || 'nuevo';
 
         if (!folioStr) return; 
         
