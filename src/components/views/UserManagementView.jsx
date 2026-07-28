@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UserPlus, Users, ShieldAlert, CheckCircle2, Trash2, Edit2 } from 'lucide-react';
-import { createUser, getUsersList, deleteUserAccount, updateUserRole } from '@/lib/auth';
+import { Loader2, UserPlus, Users, ShieldAlert, CheckCircle2, Trash2, Edit2, KeyRound } from 'lucide-react';
+import { createUser, getUsersList, deleteUserAccount, updateUserRole, forceUserPasswordReset } from '@/lib/auth';
 
 const UserManagementView = () => {
   const currentUser = useStore((state) => state.user);
@@ -79,6 +79,23 @@ const UserManagementView = () => {
       await fetchUsers();
     } catch (error) {
       alert(error.message || 'Error al actualizar rol');
+    }
+  };
+
+  const handleResetPassword = async (id, email) => {
+    const newPassword = window.prompt(`Ingresa la nueva contraseña para el usuario ${email}:`);
+    if (!newPassword) return; // User cancelled or entered empty
+    
+    if (newPassword.length < 6) {
+      alert("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    try {
+      await forceUserPasswordReset(id, newPassword);
+      alert(`Contraseña actualizada exitosamente para ${email}`);
+    } catch (error) {
+      alert(error.message || 'Error al actualizar la contraseña');
     }
   };
 
@@ -213,15 +230,26 @@ const UserManagementView = () => {
                           {new Date(u.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                            onClick={() => handleDeleteUser(u.id, u.email)}
-                            title="Eliminar Usuario"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-primary hover:bg-primary/10 h-8 w-8"
+                              onClick={() => handleResetPassword(u.id, u.email)}
+                              title="Forzar Cambio de Contraseña"
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                              onClick={() => handleDeleteUser(u.id, u.email)}
+                              title="Eliminar Usuario"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}

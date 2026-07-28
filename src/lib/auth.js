@@ -57,3 +57,8 @@ export const updateUserRole = async (targetUserId, newRole) => {
   const { error } = await supabase.rpc('update_user_role', { target_user_id: targetUserId, new_role: newRole })
   if (error) throw error
 }
+
+export const forceUserPasswordReset = async (targetUserId, newPassword) => {
+  const { error } = await supabase.rpc('force_reset_password', { target_user_id: targetUserId, new_password: newPassword })
+  if (error) throw error
+}
