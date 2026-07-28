@@ -46,6 +46,30 @@ function mapRemoteToLocal(tableName, data) {
   return mapped;
 }
 
+async function uploadBase64(bucket, fileName, base64Str) {
+  if (!base64Str || !base64Str.startsWith('data:image')) return base64Str;
+  try {
+    const arr = base64Str.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    if (!mimeMatch) return base64Str;
+    const mime = mimeMatch[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    const blob = new Blob([u8arr], { type: mime });
+    const { error } = await supabase.storage.from(bucket).upload(fileName, blob, { upsert: true, contentType: mime });
+    if (error) throw error;
+    const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error('Error uploading image to storage:', error);
+    return base64Str; // Fallback
+  }
+}
+
 export async function syncAll() {
   console.log("Iniciando sincronización bidireccional...");
   if (isMocking) return { success: false, message: "Modo Local" };
@@ -84,6 +108,17 @@ async function pushTable(tableName) {
   const pendingCreates = await table.where('sync_status').equals('pending_create').or('sync_status').equals('pending').toArray();
   for (const record of pendingCreates) {
     const { id, sync_status, ...data } = record;
+    
+    if (data.photoBase64 && data.photoBase64.startsWith('data:image')) {
+      data.photoBase64 = await uploadBase64('sigre-images', `${tableName}/${id}_photo.webp`, data.photoBase64);
+    }
+    if (data.invoiceBase64 && data.invoiceBase64.startsWith('data:image')) {
+      data.invoiceBase64 = await uploadBase64('sigre-images', `${tableName}/${id}_invoice.webp`, data.invoiceBase64);
+    }
+    if (data.signatureBase64 && data.signatureBase64.startsWith('data:image')) {
+      data.signatureBase64 = await uploadBase64('sigre-images', `${tableName}/${id}_signature.png`, data.signatureBase64);
+    }
+
     const insertData = (tableName === 'tickets' || tableName === 'vales') ? data : { id, ...data };
     const remoteData = mapLocalToRemote(tableName, insertData);
     
@@ -104,6 +139,17 @@ async function pushTable(tableName) {
   const pendingUpdates = await table.where('sync_status').equals('pending_update').toArray();
   for (const record of pendingUpdates) {
     const { id, sync_status, ...data } = record;
+    
+    if (data.photoBase64 && data.photoBase64.startsWith('data:image')) {
+      data.photoBase64 = await uploadBase64('sigre-images', `${tableName}/${id}_photo.webp`, data.photoBase64);
+    }
+    if (data.invoiceBase64 && data.invoiceBase64.startsWith('data:image')) {
+      data.invoiceBase64 = await uploadBase64('sigre-images', `${tableName}/${id}_invoice.webp`, data.invoiceBase64);
+    }
+    if (data.signatureBase64 && data.signatureBase64.startsWith('data:image')) {
+      data.signatureBase64 = await uploadBase64('sigre-images', `${tableName}/${id}_signature.png`, data.signatureBase64);
+    }
+
     const remoteData = mapLocalToRemote(tableName, data);
     const { error } = await supabase.from(tableName).update(remoteData).eq('id', id);
     if (!error) {
