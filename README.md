@@ -7,16 +7,14 @@ Una Aplicación Web Progresiva (PWA) enfocada en la gestión de inventario, mant
 
 *   **100% Offline-First:** Los profesores y directivos pueden seguir trabajando sin internet gracias a la base de datos local en el navegador (IndexedDB / Dexie.js).
 *   **Sincronización Automática:** Cuando el dispositivo detecta conexión Wi-Fi, envía automáticamente los datos locales a la nube (Supabase).
-*   **Sistema de Cuentas y Roles:** Control de acceso mediante roles. El "Director" (Admin) tiene control total (editar, eliminar, dar de baja), mientras que el "Capturista/Invitado" solo puede agregar nuevos registros de manera segura.
-*   **Altas Rápidas:** Registro ágil de bienes mediante toma de fotografía (cámara del dispositivo) y captura de códigos de barras (escáner).
-*   **Módulo de Reportes de Incidencias:** Permite reportar incidencias (como fallas en aires acondicionados) escaneando el código QR del salón.
-*   **Módulo de Conciliación Inteligente:** Procesa archivos Excel locales y compara el inventario oficial contra lo que realmente existe en el plantel, identificando "Faltantes", "Sobrantes" o discrepancias físicas.
-*   **Módulo de Vales de Resguardo:** Permite generar asignaciones formales de bienes a maestros u operativos. Genera automáticamente un documento PDF listo para imprimir o enviar con firma autógrafa digital.
+*   **Sistema de Cuentas y Roles:** Control de acceso mediante roles. El "Director" (Admin) tiene control total (editar, eliminar, dar de baja, ver conciliaciones), mientras que el "Capturista" solo puede agregar registros o modificar los propios sin afectar lo demás.
+*   **Altas Rápidas:** Registro ágil de bienes mediante toma de fotografía (cámara del dispositivo), captura de código de barras (escáner) para el número de serie, y **subida de fotografía de factura/ticket**.
+*   **Módulo de Reportes de Incidencias:** Permite reportar incidencias (como fallas en aires acondicionados) escaneando el código QR del salón o seleccionando un artículo.
+*   **Módulo de Conciliación Inteligente:** Procesa archivos Excel oficiales y compara el inventario contra lo que realmente existe en el plantel, identificando "Faltantes", "Sobrantes" o discrepancias físicas (solo disponible para Directores).
+*   **Módulo de Vales de Resguardo:** Permite generar asignaciones formales de bienes a maestros u operativos. Genera automáticamente un documento PDF listo para imprimir e incluye un pad para capturar la **firma digital directamente en pantalla**.
 *   **Módulo Independiente de "Bajas":** Proceso rápido y seguro para descartar artículos (por obsolescencia, daño o robo), registrando el motivo, ubicación de resguardo y evidencia fotográfica del artículo desechado, conservándolo en una pestaña histórica separada.
-*   **Semáforo de Mantenimiento Preventivo:** Permite asignar una frecuencia de revisión (en meses) a los equipos (ej. aires acondicionados). El sistema calcula dinámicamente y muestra un semáforo visual (Verde, Amarillo, Rojo) alertando cuando un equipo necesita servicio técnico.
-
-*   **Conexión a la Nube (Supabase):** Cuenta con una base de datos PostgreSQL remota y segura en la nube.
-*   **Sincronización Bidireccional Automática:** Sube automáticamente los registros creados sin internet y descarga las novedades desde Supabase en cuanto se detecta conexión, usando manejo de conflictos.
+*   **Semáforo de Mantenimiento Preventivo:** Calcula dinámicamente y muestra un semáforo visual (Verde, Amarillo, Rojo) alertando cuando un equipo necesita servicio técnico según su frecuencia asignada.
+*   **Interfaz Optimizada para Móviles (Mobile-First):** Botones de acción (editar, eliminar) siempre visibles y operables fácilmente desde teléfonos sin necesidad de interactuar con menús escondidos.
 
 ## ¿Cómo ejecutar el proyecto?
 
@@ -53,9 +51,11 @@ Si prefieres usar la terminal (Símbolo del sistema, PowerShell, o bash), sigue 
 
 ---
 ## ¿Qué falta por implementar / Mejoras Futuras (Roadmap)?
-*   **Migración a Autenticación en Nube (Supabase Auth):** Reemplazar el inicio de sesión local estático por un sistema de cuentas vinculado a correos electrónicos reales para mayor seguridad corporativa.
-*   **Impresión masiva de Etiquetas y Códigos QR:** Crear un módulo para seleccionar múltiples bienes y generar un PDF con plantillas de etiquetas listas para imprimir en impresoras térmicas.
-*   **Optimización de Imágenes (Offline):** Implementar compresión de imágenes y conversión a WebP antes de guardar en la base de datos local para ahorrar espacio de almacenamiento en teléfonos de gama baja.
-*   **Notificaciones Push para Mantenimientos:** Habilitar el uso del Service Worker para enviar notificaciones al dispositivo del encargado cuando un equipo (como un minisplit) llegue a su fecha de mantenimiento.
-*   **Historial de Depreciación y Movimientos:** Mantener un registro contable del valor estimado del equipo y un registro detallado de qué salón a qué salón se movió cada artículo en qué fecha.
-*   **Configurador de Planteles:** Permitir que la misma aplicación maneje distintas escuelas o turnos escolares (Matutino/Vespertino) bajo la misma cuenta de administrador.
+*   **Campo de Ubicación en Incidencias:** Agregar un campo opcional para especificar la ubicación exacta del problema dentro de un salón o área al levantar un reporte de incidencia.
+*   **Rediseño de la Vista de Reportes:** Reestructurar la pantalla de reportes para que funcione como la vista de bienes (lista general en primer plano, panel lateral para agregar), y añadir un botón de "Solucionado" con una pestaña para reportes cerrados.
+*   **Validación Estricta de Excels en Conciliación:** Implementar un bloqueo o validación que impida subir cualquier archivo Excel que no cuente exactamente con el formato oficial de la SEP para evitar fallos.
+*   **Sincronización de Facturas (Supabase):** Añadir la columna `invoice_image` en la tabla `items` de Supabase para poder subir a la nube las fotografías de tickets/facturas que ya se están guardando localmente.
+*   **Migración a Autenticación Real (Supabase Auth):** Reemplazar el inicio de sesión local (mocked) por un sistema de cuentas vinculado a correos electrónicos reales para mayor seguridad corporativa.
+*   **Impresión de Etiquetas y Códigos QR:** Crear un módulo para seleccionar múltiples bienes y generar plantillas listas para imprimir sus etiquetas de identificación física.
+*   **Optimización de Imágenes (Client-Side):** Implementar compresión de fotografías a formato WebP u optimización de tamaño antes de guardarlas, ahorrando ancho de banda y espacio local.
+*   **Historial de Depreciación y Movimientos:** Mantener un registro contable del valor estimado del equipo y los movimientos físicos (cambios de salón).
