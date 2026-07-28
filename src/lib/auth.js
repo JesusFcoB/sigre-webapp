@@ -5,7 +5,12 @@ import { createClient } from '@supabase/supabase-js'
 // lo cual cerraría la sesión del Director actual que está creando la cuenta.
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co'
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key'
-const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey)
+const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  }
+})
 
 export const signIn = async (email, password) => {
   const { data, error } = await supabase.auth.signInWithPassword({
