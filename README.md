@@ -14,6 +14,8 @@ Una Aplicación Web Progresiva (PWA) enfocada en la gestión de inventario, mant
 *   **Módulo de Conciliación Inteligente:** Compara el inventario contra lo que realmente existe en el plantel. Incluye una **Validación Estricta de Archivos Excel** para garantizar que cumplan con el formato oficial de la SEP antes de ser procesados.
 *   **Módulo de Vales de Resguardo:** Genera asignaciones formales de bienes a maestros u operativos, incluye captura de **firma digital directamente en pantalla** y generación de documento PDF.
 *   **Módulo Independiente de "Bajas":** Proceso rápido y seguro para descartar artículos por obsolescencia, daño o robo, registrando evidencia fotográfica.
+*   **Gestión Administrativa de Usuarios:** Panel dedicado donde el Director puede dar de alta cuentas, modificar roles (Director, Capturista, Profesor), eliminar usuarios, y forzar la restauración de contraseñas de forma segura (vía SQL RPC) sin requerir verificación por correo (ideal para entornos escolares controlados).
+*   **Dashboard Directivo:** Panel de control con métricas en tiempo real y gráficas interactivas que reflejan el estado del inventario (Nuevo, Bueno, Regular, Malo) alimentadas directamente de la base de datos local.
 *   **Semáforo de Mantenimiento Preventivo:** Calcula dinámicamente alertas de servicio técnico según frecuencia asignada (Verde, Amarillo, Rojo).
 *   **Interfaz Optimizada para Móviles (Mobile-First):** Acciones siempre accesibles desde teléfonos mediante Bottom Navigation.
 
