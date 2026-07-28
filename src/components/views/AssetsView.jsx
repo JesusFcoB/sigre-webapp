@@ -372,21 +372,26 @@ export default function AssetsView() {
     reader.readAsDataURL(file)
   }
 
+  const generateFolio = (prefixStr, indexOffset = 0) => {
+    const existingFolios = allItems.map(i => i.serial_number).filter(s => s && s.startsWith(prefixStr));
+    let maxNum = 0;
+    existingFolios.forEach(s => {
+      const n = parseInt(s.replace(prefixStr, ''), 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    });
+    return `${prefixStr}${(maxNum + 1 + indexOffset).toString().padStart(4, '0')}`;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormError("")
+    
+    const year = new Date().getFullYear();
+    const prefix = `SIGRE-${year}-`;
     let serial = formData.serial_number?.trim()
     
     if (!serial) {
-      const year = new Date().getFullYear();
-      const prefix = `SIGRE-${year}-`;
-      const existingFolios = allItems.map(i => i.serial_number).filter(s => s && s.startsWith(prefix));
-      let maxNum = 0;
-      existingFolios.forEach(s => {
-        const n = parseInt(s.replace(prefix, ''), 10);
-        if (!isNaN(n) && n > maxNum) maxNum = n;
-      });
-      serial = `${prefix}${(maxNum + 1).toString().padStart(4, '0')}`;
+      serial = generateFolio(prefix, 0);
     }
 
     if (serial) {
@@ -395,10 +400,10 @@ export default function AssetsView() {
     }
     try {
       if (editingId) {
-        const firstRow = formData.breakdown[0] || { condition: "nuevo", quantity: totalQty };
+        const firstRow = formData.breakdown[0] || { condition: "nuevo", quantity: formData.quantity };
         let currentSerial = formData.serial_number;
         if (!currentSerial || !currentSerial.startsWith(`${prefix}-`)) {
-          currentSerial = await generateFolio(prefix, 0);
+          currentSerial = generateFolio(prefix, 0);
         }
 
         await db.items.update(editingId, {
@@ -417,7 +422,7 @@ export default function AssetsView() {
 
         for (let i = 1; i < formData.breakdown.length; i++) {
           const row = formData.breakdown[i];
-          const folio = await generateFolio(prefix, i);
+          const folio = generateFolio(prefix, i);
           await db.items.add({
             id: crypto.randomUUID(),
             description: formData.description,
@@ -436,7 +441,7 @@ export default function AssetsView() {
       } else {
         for (let i = 0; i < formData.breakdown.length; i++) {
           const row = formData.breakdown[i];
-          const folio = await generateFolio(prefix, i);
+          const folio = generateFolio(prefix, i);
           await db.items.add({
             id: crypto.randomUUID(),
             description: formData.description,
