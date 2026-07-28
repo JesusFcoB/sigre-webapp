@@ -161,13 +161,13 @@ export default function DashboardView({ navigateTo }) {
         {role === 'director' && (
           <Card className="border-l-4 border-l-orange-500 shadow-sm hover:border-orange-600 transition-all cursor-pointer hover:shadow-md" onClick={() => navigateTo('users')}>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Usuarios Locales</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Accesos del Sistema</CardTitle>
               <Users className="w-4 h-4 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground">Gestión</div>
+              <div className="text-3xl font-bold text-foreground">Usuarios</div>
               <p className="text-xs text-orange-500 font-bold mt-1 hover:underline flex items-center gap-1">
-                Altas y bajas <ExternalLink className="w-3 h-3" />
+                Registrar personal <ExternalLink className="w-3 h-3" />
               </p>
             </CardContent>
           </Card>
