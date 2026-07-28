@@ -18,8 +18,12 @@ export default function ScannerView({ navigateTo }) {
     [scannedData]
   );
 
+  const itemInfo = useLiveQuery(
+    () => scannedData ? db.items.filter(i => i.serial_number === scannedData).first() : null,
+    [scannedData]
+  );
+
   const handleScan = (data) => {
-    // Para prototipo: extraemos algo del texto o simplemente mostramos éxito
     setScannedData(data);
     setIsScanning(false);
   };
@@ -77,46 +81,85 @@ export default function ScannerView({ navigateTo }) {
           </div>
 
           <Card className="w-full border-primary/20 shadow-lg overflow-hidden">
-            <div className="bg-primary p-4 text-primary-foreground flex justify-between items-center">
+            <div className={`p-4 text-white flex justify-between items-center ${locationInfo ? 'bg-primary' : itemInfo ? 'bg-indigo-600' : 'bg-slate-600'}`}>
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                <span className="font-bold text-lg">{locationInfo ? locationInfo.name : scannedData}</span>
+                <span className="font-bold text-lg">
+                  {locationInfo ? locationInfo.name : itemInfo ? itemInfo.description : scannedData}
+                </span>
               </div>
               <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0">
-                Ubicación
+                {locationInfo ? 'Aula / Espacio' : itemInfo ? 'Bien / Artículo' : 'Código Leído'}
               </Badge>
             </div>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4 mb-6 bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">
-                <div className="bg-primary/10 p-3 rounded-full text-primary">
-                  <UserCircle className="w-8 h-8" />
+            
+            {locationInfo && (
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4 mb-6 bg-slate-50 dark:bg-slate-900 p-4 rounded-xl">
+                  <div className="bg-primary/10 p-3 rounded-full text-primary">
+                    <UserCircle className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground font-medium">Responsable del Espacio</p>
+                    <p className="font-bold text-foreground text-lg">{locationInfo.responsible_name || 'No Asignado'}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">Responsable del Espacio</p>
-                  <p className="font-bold text-foreground text-lg">{locationInfo ? locationInfo.responsible_name : 'No Asignado'}</p>
+              </CardContent>
+            )}
+
+            {itemInfo && (
+              <CardContent className="p-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-sm font-medium">Estado:</span>
+                    <Badge>{itemInfo.condition}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground text-sm font-medium">Número de Serie:</span>
+                    <span className="font-bold">{itemInfo.serial_number}</span>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
+              </CardContent>
+            )}
           </Card>
 
           <div className="flex flex-col gap-4 w-full mt-2">
-            <Button 
-              size="lg" 
-              className="h-16 text-xl rounded-2xl shadow-lg w-full bg-blue-600 hover:bg-blue-700"
-              onClick={() => {
-                setSelectedLocation(scannedData);
-                navigateTo('classroom_inventory');
-              }}
-            >
-              <FileText className="mr-3 h-6 w-6" />
-              Ver Inventario de Aula
-            </Button>
+            {(locationInfo || (!locationInfo && !itemInfo)) && (
+              <Button 
+                size="lg" 
+                className="h-16 text-xl rounded-2xl shadow-lg w-full bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  setSelectedLocation(scannedData);
+                  navigateTo('classroom_inventory');
+                }}
+              >
+                <FileText className="mr-3 h-6 w-6" />
+                Ver Inventario de Aula
+              </Button>
+            )}
+
+            {itemInfo && (
+              <Button 
+                size="lg" 
+                className="h-16 text-xl rounded-2xl shadow-lg w-full bg-indigo-600 hover:bg-indigo-700"
+                onClick={() => {
+                  useStore.getState().setEditingItem(itemInfo);
+                  navigateTo('assets');
+                }}
+              >
+                <FileText className="mr-3 h-6 w-6" />
+                Ver Detalles del Bien
+              </Button>
+            )}
             
             <Button 
               size="lg" 
               variant="destructive" 
               className="h-16 text-xl rounded-2xl shadow-lg w-full"
-              onClick={() => navigateTo('report')}
+              onClick={() => {
+                if (locationInfo) setSelectedLocation(scannedData);
+                navigateTo('report');
+              }}
             >
               <AlertCircle className="mr-3 h-6 w-6" />
               Reportar Incidencia

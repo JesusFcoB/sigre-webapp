@@ -28,9 +28,9 @@ export default function ClassroomInventoryView({ navigateTo }) {
     () => db.items.where('location_id').equals(selectedLocation).toArray()
   ) || [];
 
-  const existingVale = useLiveQuery(
-    () => db.vales.where('location_id').equals(selectedLocation).last()
-  );
+  const vales = useLiveQuery(() => db.vales.toArray()) || [];
+  // Evitar error de índice no encontrado filtrando manualmente
+  const existingVale = vales.filter(v => v.location_id === selectedLocation).pop();
 
   const locationInfo = useLiveQuery(
     () => db.locations.get(selectedLocation),
