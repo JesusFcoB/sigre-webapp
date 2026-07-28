@@ -21,7 +21,7 @@ const UserManagementView = () => {
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleRegister = async () => {
-    if (!newName.trim() || !newUsername.trim() || !newPassword.trim()) return;
+    if (!newUsername.trim() || !newPassword.trim()) return;
     
     setIsCreating(true);
     setSuccessMsg('');
@@ -62,7 +62,7 @@ const UserManagementView = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Nombre Completo</label>
+              <label className="text-sm font-medium">Nombre Completo <span className="text-muted-foreground font-normal">(Opcional)</span></label>
               <Input 
                 placeholder="Ej. Ana Gómez" 
                 value={newName} 
@@ -106,7 +106,7 @@ const UserManagementView = () => {
                 {errorMsg}
               </div>
             )}
-            <Button className="w-full mt-2" onClick={handleRegister} disabled={!newName || !newUsername || !newPassword || isCreating}>
+            <Button className="w-full mt-2" onClick={handleRegister} disabled={!newUsername || !newPassword || isCreating}>
               {isCreating ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creando en Supabase...</>
               ) : (
