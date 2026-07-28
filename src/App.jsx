@@ -14,6 +14,8 @@ import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut,
 import { useStore } from './store/useStore'
 import { syncAll } from './lib/sync'
 import { db } from './lib/db'
+import { supabase } from './lib/supabase'
+import { signOut } from './lib/auth'
 import LocationsView from './components/views/LocationsView'
 import UserManagementView from './components/views/UserManagementView'
 import { Button } from './components/ui/button'
@@ -28,6 +30,21 @@ function App() {
 
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncStatusMsg, setSyncStatusMsg] = useState('')
+
+  useEffect(() => {
+    // Escuchar cambios de sesión reales de Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        useStore.getState().login(session.user)
+      } else {
+        useStore.getState().logout()
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
   useEffect(() => {
     const handleOnline = async () => {
@@ -130,9 +147,9 @@ function App() {
 
           <div className="flex items-center gap-3 border-l pl-4">
             <span className="text-sm text-muted-foreground hidden md:inline-block font-medium">
-              {user.name} <span className="opacity-70">({role})</span>
+              {user.user_metadata?.name || user.email} <span className="opacity-70">({role})</span>
             </span>
-            <Button variant="ghost" size="icon" onClick={logout} title="Cerrar Sesión" className="text-muted-foreground hover:text-destructive">
+            <Button variant="ghost" size="icon" onClick={() => signOut()} title="Cerrar Sesión" className="text-muted-foreground hover:text-destructive">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>

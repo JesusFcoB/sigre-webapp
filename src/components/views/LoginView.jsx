@@ -4,28 +4,38 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { PackageSearch, UserPlus, LogIn, AlertCircle } from 'lucide-react';
+import { PackageSearch, UserPlus, LogIn, AlertCircle, Loader2 } from 'lucide-react';
+import { signIn } from '@/lib/auth';
 
 const LoginView = () => {
   
   // Login form state
-  const [loginUsername, setLoginUsername] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const users = useStore((state) => state.users);
   const login = useStore((state) => state.login);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
-    if (!loginUsername || !loginPassword) return;
+    if (!loginEmail || !loginPassword) return;
     
-    const userToLogin = users.find(u => u.username === loginUsername && u.password === loginPassword);
-    if (userToLogin) {
-      login(userToLogin);
-    } else {
-      setLoginError('Usuario o contraseña incorrectos.');
+    setIsLoading(true);
+    try {
+      await signIn(loginEmail, loginPassword);
+      // login state will be handled by App.jsx onAuthStateChange
+    } catch (err) {
+      console.error(err);
+      if (err.message.includes('Invalid login credentials')) {
+        setLoginError('Correo o contraseña incorrectos.');
+      } else {
+        setLoginError('Error de red o conexión. Verifica tu internet.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -60,11 +70,12 @@ const LoginView = () => {
                     </div>
                   )}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Usuario</label>
+                    <label className="text-sm font-medium">Correo Electrónico</label>
                     <Input 
-                      placeholder="Tu nombre de usuario" 
-                      value={loginUsername}
-                      onChange={(e) => setLoginUsername(e.target.value)}
+                      type="email"
+                      placeholder="Tu correo" 
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
                       required
                     />
                   </div>
@@ -81,9 +92,12 @@ const LoginView = () => {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-3">
-                <Button type="submit" className="w-full" size="lg" disabled={!loginUsername || !loginPassword}>
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Entrar al Sistema
+                <Button type="submit" className="w-full" size="lg" disabled={!loginEmail || !loginPassword || isLoading}>
+                  {isLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Conectando...</>
+                  ) : (
+                    <><LogIn className="w-4 h-4 mr-2" /> Entrar al Sistema</>
+                  )}
                 </Button>
               </CardFooter>
             </form>

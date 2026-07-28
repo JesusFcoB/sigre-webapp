@@ -5,12 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Trash2, Users, ShieldAlert } from 'lucide-react';
+import { Loader2, UserPlus, Users, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { createUser } from '@/lib/auth';
 
 const UserManagementView = () => {
-  const users = useStore((state) => state.users);
-  const addUser = useStore((state) => state.addUser);
-  const removeUser = useStore((state) => state.removeUser);
   const currentUser = useStore((state) => state.user);
 
   const [newName, setNewName] = useState('');
@@ -18,29 +16,28 @@ const UserManagementView = () => {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('profesor');
 
-  const handleRegister = () => {
+  const [isCreating, setIsCreating] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleRegister = async () => {
     if (!newName.trim() || !newUsername.trim() || !newPassword.trim()) return;
     
-    addUser({
-      name: newName,
-      username: newUsername,
-      password: newPassword,
-      role: newRole,
-    });
-    
-    setNewName('');
-    setNewUsername('');
-    setNewPassword('');
-    setNewRole('profesor');
-  };
-
-  const handleDelete = (id) => {
-    if (id === currentUser.id) {
-      alert("No puedes eliminar tu propio usuario mientras estás en sesión.");
-      return;
-    }
-    if (window.confirm("¿Seguro que deseas eliminar este usuario?")) {
-      removeUser(id);
+    setIsCreating(true);
+    setSuccessMsg('');
+    setErrorMsg('');
+    try {
+      await createUser(newUsername, newPassword, newRole, newName);
+      setSuccessMsg(`Usuario ${newName} creado exitosamente.`);
+      setNewName('');
+      setNewUsername('');
+      setNewPassword('');
+      setNewRole('profesor');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.message || 'Error al crear usuario.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -97,52 +94,37 @@ const UserManagementView = () => {
                 <option value="profesor">Profesor</option>
               </Select>
             </div>
-            <Button className="w-full mt-2" onClick={handleRegister} disabled={!newName || !newUsername || !newPassword}>
-              <UserPlus className="w-4 h-4 mr-2" />
-              Registrar Usuario
+            {successMsg && (
+              <div className="bg-green-50 text-green-600 p-3 rounded-lg text-sm flex gap-2 items-center border border-green-100">
+                <CheckCircle2 className="w-4 h-4" />
+                {successMsg}
+              </div>
+            )}
+            {errorMsg && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex gap-2 items-center border border-red-100">
+                <ShieldAlert className="w-4 h-4" />
+                {errorMsg}
+              </div>
+            )}
+            <Button className="w-full mt-2" onClick={handleRegister} disabled={!newName || !newUsername || !newPassword || isCreating}>
+              {isCreating ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creando en Supabase...</>
+              ) : (
+                <><UserPlus className="w-4 h-4 mr-2" /> Registrar Usuario</>
+              )}
             </Button>
           </CardContent>
         </Card>
 
-        {/* Lista de Usuarios */}
-        <Card className="md:col-span-2 shadow-sm">
+        {/* Lista de Usuarios Removida Temporalmente */}
+        <Card className="md:col-span-2 shadow-sm bg-muted/20">
           <CardHeader>
-            <CardTitle className="text-lg">Usuarios Registrados ({users.length})</CardTitle>
-            <CardDescription>Lista de cuentas con acceso al prototipo.</CardDescription>
+            <CardTitle className="text-lg text-muted-foreground">Directorio de Usuarios</CardTitle>
+            <CardDescription>
+              Para ver el directorio completo de todos los usuarios registrados, debes iniciar sesión en el panel de control de tu proyecto en Supabase (Sección Authentication). 
+              Esta pantalla está optimizada únicamente para dar de alta accesos rápidamente.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-3">
-              {users.map(u => (
-                <div key={u.id} className="bg-card border rounded-xl p-4 flex gap-4 items-center justify-between transition-all hover:border-primary/30">
-                  <div className="flex flex-col">
-                    <p className="font-bold text-base flex items-center gap-2">
-                      {u.name}
-                      {u.id === currentUser.id && (
-                        <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
-                          Tú
-                        </Badge>
-                      )}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{u.username}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Badge variant={u.role === 'director' ? 'default' : u.role === 'capturista' ? 'outline' : 'secondary'} className="hidden sm:inline-flex">
-                      {u.role === 'director' ? 'Administrador' : u.role === 'capturista' ? 'Capturista' : 'Profesor'}
-                    </Badge>
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
-                      className="h-8 w-8 bg-red-50 text-red-600 hover:bg-red-100"
-                      onClick={() => handleDelete(u.id)}
-                      disabled={u.id === currentUser.id}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
         </Card>
       </div>
     </div>

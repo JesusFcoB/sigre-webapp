@@ -1,12 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const savedUsers = JSON.parse(localStorage.getItem('sigre_users') || 'null');
-const defaultUsers = savedUsers || [
-  { id: '1', name: 'Director General', username: 'director', password: '123', role: 'director' },
-  { id: '2', name: 'Capturista Asignado', username: 'capturista', password: '123', role: 'capturista' },
-  { id: '3', name: 'Profesor Base', username: 'profesor', password: '123', role: 'profesor' }
-];
+// Los usuarios ahora se manejan a través de Supabase Auth
+// y no necesitamos un array local por defecto
 
 export const useStore = create(
   persist(
@@ -14,25 +10,12 @@ export const useStore = create(
       isOnline: navigator.onLine,
       setOnlineStatus: (status) => set({ isOnline: status }),
       
-      // Gestión de Usuarios locales
-      users: defaultUsers,
-      addUser: (user) => set((state) => {
-        const newUsers = [...state.users, { ...user, id: Date.now().toString() }];
-        localStorage.setItem('sigre_users', JSON.stringify(newUsers)); // Mantener compatibilidad anterior
-        return { users: newUsers };
-      }),
-      removeUser: (userId) => set((state) => {
-        const newUsers = state.users.filter(u => u.id !== userId);
-        localStorage.setItem('sigre_users', JSON.stringify(newUsers)); // Mantener compatibilidad anterior
-        return { users: newUsers };
-      }),
-      
       // Autenticación
       user: null,
       role: null,
-      login: (userData) => set({ user: userData, role: userData.role }),
+      login: (userData) => set({ user: userData, role: userData.user_metadata?.role || 'profesor' }),
       logout: () => set({ user: null, role: null }),
-      
+
       // Estado UI volátil (no se guardará al recargar)
       syncCount: 0,
       setSyncCount: (count) => set({ syncCount: count }),
@@ -63,7 +46,6 @@ export const useStore = create(
         user: state.user,
         role: state.role,
         theme: state.theme,
-        users: state.users, // Guardamos la lista de usuarios aquí también
       }),
     }
   )
