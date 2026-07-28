@@ -100,7 +100,7 @@ function App() {
       case 'locations':
         return <LocationsView navigateTo={setActiveTab} />
       case 'users':
-        return <UserManagementView />
+        return role === 'director' ? <UserManagementView /> : <DashboardView />
       default:
         return <DashboardView />
     }
