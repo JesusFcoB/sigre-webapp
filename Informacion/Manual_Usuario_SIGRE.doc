@@ -1,0 +1,105 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+    <meta charset="utf-8">
+    <title>Manual de Usuario - SIGRE</title>
+    <style>
+        body { font-family: 'Calibri', Arial, sans-serif; line-height: 1.6; color: #333; margin: 20px; }
+        h1 { color: #2C3E50; text-align: center; border-bottom: 2px solid #3498DB; padding-bottom: 10px; font-size: 28px; }
+        h2 { color: #2980B9; margin-top: 25px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        h3 { color: #16A085; margin-top: 15px; }
+        ul { margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        .highlight { background-color: #F9E79F; padding: 2px 5px; font-weight: bold; }
+        .note { background-color: #EBF5FB; border-left: 4px solid #3498DB; padding: 10px; margin: 15px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #F2F3F4; color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Manual de Usuario - SIGRE</h1>
+    <p style="text-align: center;"><strong>Sistema Integral de Gestión de Recursos Escolares</strong></p>
+    
+    <h2>1. Introducción al Sistema</h2>
+    <p>Bienvenido a <strong>SIGRE</strong>, la plataforma diseñada específicamente para la gestión de inventarios y recursos dentro de planteles escolares. Este sistema fue construido pensando en la movilidad, por lo que puedes utilizarlo cómodamente desde tu teléfono celular o computadora.</p>
+    
+    <div class="note">
+        <strong>¡Importante! Trabajo sin Internet (Offline-First):</strong> 
+        El sistema está preparado para funcionar aunque la escuela no tenga Wi-Fi en todas las áreas. Puedes registrar bienes, tomar fotos y reportar incidencias sin conexión. Cuando el dispositivo recupere la señal de internet, se sincronizará automáticamente con la nube central.
+    </div>
+
+    <h2>2. Inicio de Sesión y Roles</h2>
+    <p>Para ingresar al sistema, debes escribir tu correo electrónico y contraseña registrados. Dependiendo de tu nivel de acceso, verás diferentes opciones en pantalla:</p>
+    <ul>
+        <li><strong>Director (Administrador):</strong> Tiene acceso total. Puede registrar bienes, gestionar aulas, autorizar vales, aprobar bajas y crear nuevas cuentas para otros maestros.</li>
+        <li><strong>Capturista / Profesor:</strong> Tiene acceso limitado a las labores del día a día. Puede registrar mobiliario, levantar incidencias y firmar vales, pero NO puede borrar información del sistema ni modificar a otros usuarios.</li>
+    </ul>
+
+    <h2>3. Navegación Principal (Dashboard)</h2>
+    <p>Al ingresar, la primera pantalla es tu <strong>Panel de Control (Dashboard)</strong>. Aquí podrás ver un resumen inmediato de la escuela:</p>
+    <ul>
+        <li><strong>Total de Bienes:</strong> Cuántos artículos hay registrados en toda la escuela. Si aparece un número en amarillo, significa que hay registros locales esperando internet para subirse a la nube.</li>
+        <li><strong>Incidencias Pendientes:</strong> Reportes de fallas o daños en el equipo que requieren atención.</li>
+        <li><strong>Tasa de Conciliación:</strong> Porcentaje de exactitud del inventario real contra el inventario reportado.</li>
+        <li><strong>Gráfica de Estado Físico:</strong> Un diagrama visual que te muestra en tiempo real cuántos muebles están Nuevos, Buenos, Regulares o Malos.</li>
+    </ul>
+
+    <h2>4. Módulos del Sistema</h2>
+
+    <h3>A. Registro de Bienes (Altas)</h3>
+    <p>Ubicado en el menú inferior con el ícono de una "caja con un +". Este módulo sirve para dar de alta nuevo mobiliario o equipo tecnológico (sillas, pizarrones, minisplits, proyectores).</p>
+    <ul>
+        <li><strong>Número de Serie / Etiqueta:</strong> Puedes escribirlo a mano o tocar el botón del código de barras para usar la cámara de tu celular y escanear el QR o código de barras de la etiqueta de la SEP.</li>
+        <li><strong>Fotografía:</strong> Toca el recuadro gris para abrir la cámara y tomar una foto de evidencia del equipo. El sistema la optimizará automáticamente para no llenar la memoria de tu teléfono.</li>
+        <li><strong>Mantenimiento:</strong> Si es un equipo electrónico (como un Minisplit), puedes indicar cada cuántos meses necesita servicio técnico. El sistema te avisará con un "semáforo" de colores cuando la fecha se acerque.</li>
+    </ul>
+
+    <h3>B. Gestión de Aulas (Ubicaciones)</h3>
+    <p>Aquí puedes crear los espacios físicos de tu escuela (Ej. "Aula 1A", "Dirección", "Bodega"). Cada salón puede tener un <em>Profesor Responsable</em> asignado, facilitando saber a quién acudir cuando falta algo.</p>
+
+    <h3>C. Vales de Resguardo</h3>
+    <p>Este módulo sirve para prestar equipo valioso (Ej. laptops, micrófonos, proyectores) a un docente de manera temporal o indefinida.</p>
+    <ul>
+        <li>Permite seleccionar qué artículo se está prestando.</li>
+        <li>Solicita la <strong>Firma Digital</strong> del docente directamente dibujando con el dedo en la pantalla del celular.</li>
+        <li>Registra la fecha límite de devolución para llevar un control estricto de los activos de la escuela.</li>
+    </ul>
+
+    <h3>D. Reporte de Incidencias y Mantenimiento</h3>
+    <p>Si un maestro encuentra una butaca rota o un aire acondicionado goteando, utiliza este módulo (ícono de triángulo de advertencia). Puede seleccionar el tipo de problema, subir una foto de la falla, y describir el daño para que dirección tome cartas en el asunto.</p>
+
+    <h3>E. Conciliación Inteligente</h3>
+    <p>Módulo exclusivo para directivos. Permite auditar el inventario subiendo el archivo oficial de <strong>Excel de la SEP</strong>. El sistema cruzará la información automáticamente y te dirá qué artículos faltan físicamente en la escuela o qué cosas sobran y no están en el documento oficial.</p>
+
+    <h2>5. Administración de Accesos (Solo Director)</h2>
+    <p>En el Dashboard, el Director verá un botón especial llamado <strong>Accesos del Sistema</strong>. Al entrar, podrá:</p>
+    <ul>
+        <li>Crear nuevas cuentas para maestros que se integren al plantel.</li>
+        <li>Dar clic en el <span class="highlight">Botón de la Llave Azul</span> para forzar el cambio de contraseña de un maestro si este la olvida, restaurando el acceso instantáneamente sin tener que mandar correos de recuperación.</li>
+        <li>Dar de baja (borrar) cuentas de personal que ya no labore en la escuela (Bote de basura rojo).</li>
+    </ul>
+
+    <h2>6. Mejores Prácticas y Consejos</h2>
+    <table>
+        <tr>
+            <th>Situación</th>
+            <th>Recomendación</th>
+        </tr>
+        <tr>
+            <td>No hay señal Wi-Fi en un aula profunda.</td>
+            <td>Registra todo el inventario de ese salón normalmente. El sistema lo guardará localmente. Al salir al patio o a dirección, el sistema subirá los datos solos.</td>
+        </tr>
+        <tr>
+            <td>La gráfica no muestra información nueva.</td>
+            <td>Si estás en computadora, presiona <strong>Ctrl + Shift + R</strong> para forzar al navegador a limpiar el caché y descargar la actualización más reciente del sistema.</td>
+        </tr>
+        <tr>
+            <td>Fotografías pesadas.</td>
+            <td>El sistema está preparado con <em>Supabase Storage</em>. Las fotos que tomes se comprimirán y subirán a la nube optimizadas para que el sistema siga funcionando súper rápido.</td>
+        </tr>
+    </table>
+    
+    <hr style="margin-top: 30px;">
+    <p style="text-align: center; color: #7f8c8d; font-size: 12px;">Desarrollado para la optimización administrativa. "Menos burocracia, más educación."</p>
+</body>
+</html>
