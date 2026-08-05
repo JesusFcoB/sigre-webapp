@@ -123,7 +123,13 @@ function App() {
       
       {/* Header */}
       <header className="flex justify-between items-center px-4 py-3 bg-card border-b shadow-sm z-40 relative">
-        <h1 className="text-xl font-bold text-primary tracking-tight">SIGRE</h1>
+        <h1 
+          className="text-xl font-bold text-primary tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => setActiveTab('dashboard')}
+          title="Ir al inicio"
+        >
+          SIGRE
+        </h1>
         <div className="flex items-center gap-4">
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border text-xs font-medium">
             {isSyncing ? (
