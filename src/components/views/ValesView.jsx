@@ -85,13 +85,16 @@ export default function ValesView() {
   const handleCreate = async (e) => {
     e.preventDefault()
     try {
-      const userName = user?.user_metadata?.name || user?.email || 'Director'
+      const userName = user?.user_metadata?.name || user?.email || (role === 'profesor' ? 'Profesor' : 'Director')
+      const isProfesor = role === 'profesor'
+      
       await db.vales.add({
         ...formData,
-        vale_status: 'active',
+        person_name: isProfesor ? userName : formData.person_name,
+        vale_status: isProfesor ? 'pending_approval' : 'active',
         requested_by: userName,
         requested_at: new Date().toISOString(),
-        approved_at: new Date().toISOString(),
+        approved_at: isProfesor ? null : new Date().toISOString(),
         sync_status: 'pending_create'
       })
       setDrawerOpen(false)
@@ -200,12 +203,10 @@ export default function ValesView() {
             {role === 'profesor' ? 'Seguimiento de tus solicitudes de préstamo' : 'Control de préstamos de bienes'}
           </p>
         </div>
-        {role !== 'profesor' && (
-          <Button onClick={() => setDrawerOpen(true)} className="h-10 rounded-xl font-bold gap-1.5 bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Nuevo Vale</span>
-          </Button>
-        )}
+        <Button onClick={() => setDrawerOpen(true)} className="h-10 rounded-xl font-bold gap-1.5 bg-primary hover:bg-primary/90">
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">{role === 'profesor' ? 'Solicitar Vale' : 'Nuevo Vale'}</span>
+        </Button>
       </div>
 
       {/* Metrics Cards */}
@@ -371,13 +372,20 @@ export default function ValesView() {
           <div className="relative w-full max-w-md bg-card rounded-3xl shadow-2xl z-10 animate-in zoom-in-95 duration-200">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold">Generar Vale Directo</h3>
+                <h3 className="text-xl font-bold">{role === 'profesor' ? 'Solicitar Préstamo' : 'Generar Vale Directo'}</h3>
                 <Button variant="ghost" size="icon" onClick={() => setDrawerOpen(false)}><X className="w-5 h-5" /></Button>
               </div>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold">Responsable / Maestro *</label>
-                  <Input value={formData.person_name} onChange={e => setFormData(p => ({ ...p, person_name: e.target.value }))} placeholder="Ej. Juan Pérez" required />
+                  <Input 
+                    value={role === 'profesor' ? (user?.user_metadata?.name || user?.email || 'Profesor') : formData.person_name} 
+                    onChange={e => setFormData(p => ({ ...p, person_name: e.target.value }))} 
+                    placeholder="Ej. Juan Pérez" 
+                    required 
+                    disabled={role === 'profesor'}
+                    className={role === 'profesor' ? "bg-muted/30" : ""}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold">Bien Asignado *</label>
