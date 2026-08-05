@@ -261,37 +261,92 @@ export default function ConciliationView() {
       </div>
 
       {!fileData ? (
-        <Card className="border-dashed border-2 border-primary/40 bg-muted/30">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-              {isProcessing ? (
-                <Loader2 className="w-10 h-10 text-primary animate-spin" />
-              ) : (
-                <UploadCloud className="w-10 h-10 text-primary" />
-              )}
-            </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              {isProcessing ? "Analizando Padrón..." : "Sube el Padrón Oficial"}
-            </h3>
-            <p className="text-muted-foreground max-w-sm mb-8">
-              Sube el archivo Excel para compararlo automáticamente con tu base de datos e importarlo masivamente.
-            </p>
-            
-            <div className="relative">
-              <input 
-                type="file" 
-                accept=".xlsx, .xls, .csv" 
-                onChange={handleFileUpload}
-                disabled={isProcessing}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-              />
-              <Button size="lg" className="rounded-xl h-14 px-8 font-bold text-lg shadow-md pointer-events-none" disabled={isProcessing}>
-                <FileSpreadsheet className="w-5 h-5 mr-3" />
-                {isProcessing ? "Procesando..." : "Seleccionar Archivo"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card className="border-dashed border-2 border-primary/40 bg-muted/30">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                {isProcessing ? (
+                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                ) : (
+                  <UploadCloud className="w-10 h-10 text-primary" />
+                )}
+              </div>
+              <h3 className="text-xl font-bold text-foreground mb-2">
+                {isProcessing ? "Analizando Padrón..." : "Sube el Padrón Oficial"}
+              </h3>
+              <p className="text-muted-foreground max-w-sm mb-8">
+                Sube el archivo Excel para compararlo automáticamente con tu base de datos e importarlo masivamente.
+              </p>
+              
+              <div className="relative">
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls, .csv" 
+                  onChange={handleFileUpload}
+                  disabled={isProcessing}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <Button size="lg" className="rounded-xl h-14 px-8 font-bold text-lg shadow-md pointer-events-none" disabled={isProcessing}>
+                  <FileSpreadsheet className="w-5 h-5 mr-3" />
+                  {isProcessing ? "Procesando..." : "Seleccionar Archivo"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Excel Format Guide */}
+          <Card className="shadow-sm border-t-4 border-t-blue-500">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileSpreadsheet className="w-5 h-5 text-blue-500" />
+                Formato Requerido del Excel
+              </CardTitle>
+              <CardDescription>
+                Para que el sistema acepte y procese correctamente tu archivo, debe contener <strong>exactamente</strong> las siguientes columnas en la primera fila (encabezados):
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto rounded-xl border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-blue-50 dark:bg-blue-950/30 border-b">
+                      <th className="px-3 py-2 text-left font-bold text-blue-700 dark:text-blue-400">AULA</th>
+                      <th className="px-3 py-2 text-left font-bold text-blue-700 dark:text-blue-400">DESCRIPCIÓN</th>
+                      <th className="px-3 py-2 text-left font-bold text-blue-700 dark:text-blue-400">CANTIDAD</th>
+                      <th className="px-3 py-2 text-left font-bold text-blue-700 dark:text-blue-400">CONDICIÓN</th>
+                      <th className="px-3 py-2 text-left font-bold text-blue-700 dark:text-blue-400">NÚMERO DE SERIE</th>
+                      <th className="px-3 py-2 text-left font-bold text-blue-700 dark:text-blue-400">NÚMERO DE INVENTARIO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="px-3 py-2 text-muted-foreground">Aula 1A</td>
+                      <td className="px-3 py-2 text-muted-foreground">Escritorio tipo secretarial</td>
+                      <td className="px-3 py-2 text-muted-foreground">1</td>
+                      <td className="px-3 py-2 text-muted-foreground">Bueno</td>
+                      <td className="px-3 py-2 text-muted-foreground">SN-00123</td>
+                      <td className="px-3 py-2 text-muted-foreground">INV-2024-001</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 text-muted-foreground">Dirección</td>
+                      <td className="px-3 py-2 text-muted-foreground">Minisplit 1 tonelada</td>
+                      <td className="px-3 py-2 text-muted-foreground">1</td>
+                      <td className="px-3 py-2 text-muted-foreground">Regular</td>
+                      <td className="px-3 py-2 text-muted-foreground">MS-456789</td>
+                      <td className="px-3 py-2 text-muted-foreground">INV-2024-002</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex flex-col gap-2 text-xs text-muted-foreground">
+                <p>• Los nombres de las columnas <strong>no</strong> distinguen mayúsculas de minúsculas.</p>
+                <p>• La columna <strong>CONDICIÓN</strong> acepta: Nuevo, Bueno, Regular o Malo.</p>
+                <p>• El sistema cruza los registros usando el <strong>NÚMERO DE INVENTARIO</strong> o <strong>NÚMERO DE SERIE</strong> como identificador principal.</p>
+                <p>• Formatos aceptados: <strong>.xlsx</strong>, <strong>.xls</strong> y <strong>.csv</strong></p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
           

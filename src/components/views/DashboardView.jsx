@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import { Wifi, WifiOff, Box, AlertTriangle, CheckCircle2, List, Edit2, Trash2, Moon, Sun } from "lucide-react"
+import { Wifi, WifiOff, Box, AlertTriangle, CheckCircle2, List, Edit2, Trash2, Moon, Sun, HelpCircle } from "lucide-react"
 
 export default function DashboardView({ navigateTo }) {
   const isOnline = useStore((state) => state.isOnline)
@@ -22,6 +22,9 @@ export default function DashboardView({ navigateTo }) {
   const pendingItemsCount = useLiveQuery(() => db.items.where('sync_status').equals('pending_create').count()) || 0;
   const totalTicketsCount = useLiveQuery(() => db.tickets.count()) || 0;
   const pendingTicketsCount = useLiveQuery(() => db.tickets.where('sync_status').equals('pending').count()) || 0;
+
+  const syncedItemsCount = useLiveQuery(() => db.items.where('sync_status').equals('synced').count()) || 0;
+  const conciliationRate = totalItemsCount > 0 ? Math.round((syncedItemsCount / totalItemsCount) * 100) : 0;
 
   const allItems = useLiveQuery(() => db.items.orderBy('id').reverse().toArray()) || [];
   const allTickets = useLiveQuery(() => db.tickets.orderBy('id').reverse().toArray()) || [];
@@ -134,14 +137,22 @@ export default function DashboardView({ navigateTo }) {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-green-500 shadow-sm">
+            <Card className="border-l-4 border-l-green-500 shadow-sm relative group">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Tasa de Conciliación</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                  Tasa de Conciliación
+                  <span className="relative">
+                    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/50 cursor-help" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-foreground text-background text-[11px] leading-relaxed rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                      Porcentaje de bienes sincronizados con la nube respecto al total registrado. 100% = todo está respaldado.
+                    </span>
+                  </span>
+                </CardTitle>
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">94.2%</div>
-                <p className="text-xs text-muted-foreground mt-1">Última revisión: Hace 2 días</p>
+                <div className={`text-3xl font-bold ${conciliationRate >= 80 ? 'text-green-600 dark:text-green-400' : conciliationRate >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{conciliationRate}%</div>
+                <p className="text-xs text-muted-foreground mt-1">{syncedItemsCount} de {totalItemsCount} bienes sincronizados</p>
               </CardContent>
             </Card>
           </div>
