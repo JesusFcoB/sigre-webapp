@@ -188,7 +188,7 @@ function App() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 max-w-6xl mx-auto w-full">
+        <main id="scroll-container" className="flex-1 overflow-y-auto p-4 md:p-8 max-w-6xl mx-auto w-full">
           {renderView()}
         </main>
       </div>
@@ -266,6 +266,14 @@ function App() {
             isActive={activeTab === 'report'} 
             onClick={() => setActiveTab('report')} 
           />
+          {role === 'profesor' && (
+            <NavItem 
+              icon={<FileSignature className="w-5 h-5" />} 
+              label="Mis Vales" 
+              isActive={activeTab === 'vales'} 
+              onClick={() => setActiveTab('vales')} 
+            />
+          )}
           {role === 'director' && (
             <NavItem 
               icon={<MoreHorizontal className="w-5 h-5" />} 

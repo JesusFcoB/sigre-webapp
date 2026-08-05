@@ -48,3 +48,12 @@ db.version(7).stores({
   tickets: '++id, issue_type, description, location_id, specific_location, sync_status, reported_at, status, solved_at',
   vales: '++id, person_name, start_date, end_date, sync_status'
 });
+
+// v8: Enhanced vales with loan request workflow (vale_status, requested_by, item_id index)
+// vale_status: 'pending_approval' | 'active' | 'completed' | 'rejected'
+db.version(8).stores({
+  items: 'id, official_inventory_number, description, condition, location_id, category, sync_status, status',
+  locations: 'id, name, responsible_name, sync_status',
+  tickets: '++id, issue_type, description, location_id, specific_location, sync_status, reported_at, status, solved_at',
+  vales: '++id, person_name, start_date, end_date, sync_status, vale_status, requested_by, item_id'
+});

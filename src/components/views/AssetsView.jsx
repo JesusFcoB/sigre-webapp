@@ -4,6 +4,8 @@ import { syncItemsToSupabase } from "@/lib/sync"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useStore } from "@/store/useStore"
 import { compressImage } from '@/lib/imageUtils'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { Skeleton } from "@/components/ui/skeleton"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -210,9 +212,23 @@ export default function AssetsView() {
   // Detail modal
   const [detailItem, setDetailItem] = useState(null)
 
-  const allItems = useLiveQuery(() => db.items.toArray(), []) || []
+  const itemsQuery = useLiveQuery(() => db.items.toArray(), [])
+  const isLoadingItems = itemsQuery === undefined
+  const allItems = itemsQuery || []
   const locations = useLiveQuery(() => db.locations.toArray(), []) || []
+  const allVales = useLiveQuery(() => db.vales.toArray(), []) || []
   const role = useStore((state) => state.role);
+
+  // Map of item_id -> active vale for loan badge display
+  const activeValeMap = useMemo(() => {
+    const m = {}
+    allVales.forEach(v => {
+      if (v.vale_status === 'active' && v.item_id) {
+        m[v.item_id] = v
+      }
+    })
+    return m
+  }, [allVales])
 
   const allCategories = useMemo(() => {
     return Array.from(new Set([...CATEGORIES, ...allItems.map(i => i.category).filter(Boolean)]));
@@ -532,6 +548,18 @@ export default function AssetsView() {
   const activeFiltersCount = [!!search, !!filterLocation, filterConditions.length > 0, !!filterCategory].filter(Boolean).length
   const clearFilters = () => { setSearch(""); setFilterLocation(""); setFilterConditions([]); setFilterCategory("") }
 
+  const [scrollEl, setScrollEl] = useState(null)
+  useEffect(() => {
+    setScrollEl(document.getElementById("scroll-container"))
+  }, [])
+
+  const virtualizer = useVirtualizer({
+    count: isLoadingItems ? 8 : filteredItems.length,
+    getScrollElement: () => scrollEl,
+    estimateSize: () => 100,
+    overscan: 5,
+  })
+
   return (
     <div className="flex flex-col h-full pb-28 space-y-4">
 
@@ -650,54 +678,96 @@ export default function AssetsView() {
       )}
 
       {/* Items list */}
-      {filteredItems.length === 0 ? (
+      {!isLoadingItems && filteredItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
           <Layers className="w-12 h-12 opacity-30" />
           <p className="font-medium">No se encontraron bienes</p>
           <p className="text-xs opacity-60">Ajusta los filtros o registra un nuevo bien</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {filteredItems.map(item => {
+        <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+          {virtualizer.getVirtualItems().map(virtualItem => {
+            if (isLoadingItems) {
+              return (
+                <div
+                  key={virtualItem.key}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualItem.size}px`,
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                  className="pb-2"
+                >
+                  <Skeleton className="w-full h-full rounded-2xl" />
+                </div>
+              )
+            }
+
+            const item = filteredItems[virtualItem.index]
+            if (!item) return null
+
             const meta = conditionMeta(item.condition)
             const loc = locationMap[item.location_id]
             return (
-              <div key={item.id} onClick={() => setDetailItem(item)}
-                className="bg-card border rounded-2xl p-3.5 flex items-center gap-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer active:scale-[0.99] group">
-                {item.photoBase64 ? (
-                  <img src={item.photoBase64} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                    <Package className="w-5 h-5 text-muted-foreground opacity-50" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-sm text-foreground truncate">{item.description}</p>
-                    {(() => {
-                      const maint = getMaintenanceInfo(item);
-                      return maint ? <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${maint.color} shadow-[0_0_5px_rgba(0,0,0,0.2)]`} title={maint.text} /> : null;
-                    })()}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Cant: {item.quantity || 1}</span>
-                    {item.category && <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{item.category}</span>}
-                    {loc && <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">📍 {loc.name}</span>}
-                  </div>
-                  {item.serial_number && <p className="text-[10px] text-muted-foreground mt-0.5">Serie: {item.serial_number}</p>}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0 transition-opacity">
-                  {role !== 'profesor' && (
-                    <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={(e) => openEdit(item, e)} title="Editar">
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
+              <div
+                key={virtualItem.key}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: `${virtualItem.size}px`,
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+                className="pb-2"
+              >
+                <div onClick={() => setDetailItem(item)}
+                  className="h-full bg-card border rounded-2xl p-3.5 flex items-center gap-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer active:scale-[0.99] group">
+                  {item.photoBase64 ? (
+                    <img src={item.photoBase64} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                      <Package className="w-5 h-5 text-muted-foreground opacity-50" />
+                    </div>
                   )}
-                  {role === 'director' && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10" onClick={(e) => handleDelete(item.id, e)} title="Eliminar">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-sm text-foreground truncate">{item.description}</p>
+                      {(() => {
+                        const maint = getMaintenanceInfo(item);
+                        return maint ? <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${maint.color} shadow-[0_0_5px_rgba(0,0,0,0.2)]`} title={maint.text} /> : null;
+                      })()}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Cant: {item.quantity || 1}</span>
+                      {item.category && <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{item.category}</span>}
+                      {loc && <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">📍 {loc.name}</span>}
+                    </div>
+                    {item.serial_number && <p className="text-[10px] text-muted-foreground mt-0.5">Serie: {item.serial_number}</p>}
+                    {activeValeMap[item.id] && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                          📋 Prestado a: {activeValeMap[item.id].person_name} {activeValeMap[item.id].end_date ? `| Hasta: ${activeValeMap[item.id].end_date}` : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 transition-opacity">
+                    {role !== 'profesor' && (
+                      <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); openEdit(item, e); }} title="Editar">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    {role === 'director' && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDelete(item.id, e); }} title="Eliminar">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )
