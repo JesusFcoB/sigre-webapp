@@ -1,0 +1,179 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+    <meta charset="utf-8">
+    <title>Metodología de Desarrollo - SIGRE</title>
+    <style>
+        body { font-family: 'Calibri', Arial, sans-serif; line-height: 1.6; color: #333; margin: 40px; }
+        h1 { color: #2C3E50; text-align: center; border-bottom: 3px solid #3498DB; padding-bottom: 10px; font-size: 26px; }
+        h2 { color: #2980B9; margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        h3 { color: #16A085; margin-top: 20px; }
+        p { text-align: justify; margin-bottom: 12px; }
+        ul, ol { margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #bbb; padding: 10px; text-align: left; }
+        th { background-color: #2980B9; color: #fff; }
+        .note { background-color: #EBF5FB; border-left: 4px solid #3498DB; padding: 12px; margin: 15px 0; }
+        .phase { background-color: #F4F6F7; border: 1px solid #ddd; padding: 12px; margin: 10px 0; border-radius: 4px; }
+        .caption { text-align: center; font-style: italic; color: #7f8c8d; font-size: 11px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Metodología de Desarrollo de Software</h1>
+    <p style="text-align: center;"><strong>Proyecto SIGRE — Sistema Integral de Gestión de Recursos Escolares</strong></p>
+    <p style="text-align: center; color: #7f8c8d;">Documento de Justificación Metodológica</p>
+
+    <h2>1. Selección de la Metodología</h2>
+    <p>Para el desarrollo del sistema SIGRE se adoptó el <strong>Modelo Incremental</strong>, una metodología de ingeniería de software que divide el proyecto en módulos funcionales independientes llamados <em>incrementos</em>. Cada incremento pasa por un ciclo completo de análisis, diseño, codificación, pruebas y entrega, produciendo una versión operativa del sistema que el usuario final puede utilizar de inmediato.</p>
+
+    <p>Esta metodología fue seleccionada tras evaluar las alternativas más relevantes en el contexto del proyecto:</p>
+
+    <table>
+        <tr>
+            <th>Metodología</th>
+            <th>Ventajas</th>
+            <th>Desventajas para SIGRE</th>
+            <th>Veredicto</th>
+        </tr>
+        <tr>
+            <td><strong>Cascada</strong></td>
+            <td>Estructura lineal, fácil de documentar.</td>
+            <td>No permite cambios una vez iniciada una fase. Los requerimientos de SIGRE evolucionaron con cada entrevista de campo.</td>
+            <td>Descartada</td>
+        </tr>
+        <tr>
+            <td><strong>Scrum</strong></td>
+            <td>Iteraciones cortas (Sprints), enfoque en entregables.</td>
+            <td>Diseñada para equipos de 5 o más personas. Las ceremonias obligatorias (Daily, Sprint Review, Retrospective) resultan excesivas para un equipo de 1-2 desarrolladores.</td>
+            <td>Descartada</td>
+        </tr>
+        <tr>
+            <td><strong>Kanban</strong></td>
+            <td>Flujo continuo, sin restricciones de tiempo.</td>
+            <td>Carece de la estructura formal de "entregas por fase" necesaria para la documentación académica y la validación con el usuario.</td>
+            <td>Descartada</td>
+        </tr>
+        <tr>
+            <td><strong>Incremental</strong></td>
+            <td>Entregas funcionales graduales, retroalimentación temprana, adaptable a equipos pequeños.</td>
+            <td>Requiere una arquitectura base lo suficientemente flexible para soportar nuevos módulos sin romper los anteriores.</td>
+            <td style="color: #27AE60; font-weight: bold;">✓ Seleccionada</td>
+        </tr>
+    </table>
+
+    <h2>2. Justificación Detallada</h2>
+    <p>La elección del Modelo Incremental se fundamenta en las siguientes razones técnicas y operativas:</p>
+    <ol>
+        <li><strong>Naturaleza modular del sistema:</strong> SIGRE está compuesto por módulos independientes (Inventario, Incidencias, Vales, Conciliación, Usuarios) que pueden desarrollarse, probarse y desplegarse por separado sin afectar la funcionalidad de los demás.</li>
+        <li><strong>Retroalimentación continua del usuario final:</strong> Las entrevistas de campo con la Directora del plantel revelaron requerimientos que no estaban contemplados en el diseño inicial (por ejemplo, la necesidad de un semáforo de mantenimiento preventivo o la gestión de bajas simplificada). El modelo incremental permitió incorporar estos hallazgos en incrementos posteriores sin retroceder.</li>
+        <li><strong>Tamaño reducido del equipo:</strong> Con un equipo de desarrollo de 1-2 personas, las metodologías ágiles pesadas como Scrum resultarían en una sobrecarga administrativa innecesaria. El modelo incremental ofrece estructura sin burocracia.</li>
+        <li><strong>Entregables tempranos y funcionales:</strong> Desde el primer incremento, el sistema ya era utilizable para registrar bienes y trabajar sin internet. Cada incremento posterior agregó valor real sin invalidar el trabajo previo.</li>
+        <li><strong>Mitigación de riesgos:</strong> Al entregar el sistema en porciones, los errores se detectan y corrigen dentro del alcance de cada incremento, evitando que se propaguen al resto del sistema.</li>
+    </ol>
+
+    <h2>3. Ciclo de Vida de Cada Incremento</h2>
+    <p>Cada módulo del sistema atravesó las siguientes fases dentro de su incremento:</p>
+
+    <div class="phase">
+        <strong>Fase 1 — Análisis de Requerimientos:</strong> Levantamiento de información mediante entrevistas directas con los usuarios del plantel escolar (Directora, maestros). Se identificaron las necesidades funcionales y no funcionales del módulo.
+    </div>
+    <div class="phase">
+        <strong>Fase 2 — Diseño:</strong> Diseño de la arquitectura de componentes (React), esquema de la base de datos local (Dexie.js / IndexedDB) y remota (Supabase / PostgreSQL), y definición de la interfaz de usuario con enfoque Mobile-First.
+    </div>
+    <div class="phase">
+        <strong>Fase 3 — Codificación:</strong> Implementación del módulo utilizando el stack tecnológico seleccionado (Vite + React + Tailwind CSS + Supabase). Se aplicaron buenas prácticas como componentes funcionales, hooks de estado, y separación de responsabilidades.
+    </div>
+    <div class="phase">
+        <strong>Fase 4 — Pruebas:</strong> Verificación funcional mediante compilación de producción (Vite Build), análisis estático de código (ESLint), y pruebas manuales en dispositivos móviles y de escritorio.
+    </div>
+    <div class="phase">
+        <strong>Fase 5 — Entrega y Retroalimentación:</strong> Despliegue automático a producción (Vercel) y validación con el usuario final. Los hallazgos de esta fase alimentaron el análisis del siguiente incremento.
+    </div>
+
+    <h2>4. Mapa de Incrementos del Proyecto SIGRE</h2>
+    <p>A continuación se documenta el orden cronológico de los incrementos desarrollados y su estado actual:</p>
+
+    <table>
+        <tr>
+            <th>#</th>
+            <th>Incremento</th>
+            <th>Funcionalidad Principal</th>
+            <th>Estado</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>Núcleo Offline-First</td>
+            <td>Base de datos local (IndexedDB), registro básico de bienes, captura de fotografías con compresión WebP.</td>
+            <td style="color: #27AE60;">✓ Completado</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>Autenticación y Roles</td>
+            <td>Sistema de cuentas con Supabase Auth, roles Director/Capturista/Profesor, control de permisos (RBAC).</td>
+            <td style="color: #27AE60;">✓ Completado</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>Sincronización Bidireccional</td>
+            <td>Push/Pull automático de datos entre el dispositivo local y la nube de Supabase al detectar conexión Wi-Fi.</td>
+            <td style="color: #27AE60;">✓ Completado</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>Incidencias y Conciliación</td>
+            <td>Reporte de fallas con evidencia fotográfica. Auditoría inteligente cruzando Excel oficial de la SEP contra inventario real.</td>
+            <td style="color: #27AE60;">✓ Completado</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>Vales de Resguardo</td>
+            <td>Asignación formal de bienes a docentes con firma digital en pantalla y generación de PDF del vale.</td>
+            <td style="color: #27AE60;">✓ Completado</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td>Gestión de Usuarios y Dashboard</td>
+            <td>Panel administrativo para crear/eliminar cuentas, forzar cambio de contraseñas. Dashboard con métricas y gráficas en tiempo real.</td>
+            <td style="color: #27AE60;">✓ Completado</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td>Almacenamiento en la Nube (Storage)</td>
+            <td>Migración de imágenes y firmas de Base64 a Supabase Storage, guardando únicamente URLs públicas en PostgreSQL.</td>
+            <td style="color: #27AE60;">✓ Completado</td>
+        </tr>
+        <tr>
+            <td>8</td>
+            <td>Etiquetas QR en PDF</td>
+            <td>Generación de plantillas imprimibles con códigos QR para identificación física de los bienes.</td>
+            <td style="color: #E67E22;">◯ Pendiente</td>
+        </tr>
+        <tr>
+            <td>9</td>
+            <td>Historial de Depreciación</td>
+            <td>Registro contable del valor estimado del equipo y bitácora de movimientos físicos.</td>
+            <td style="color: #E67E22;">◯ Pendiente</td>
+        </tr>
+    </table>
+
+    <h2>5. Diagrama del Modelo Incremental Aplicado</h2>
+    <div class="note">
+        <strong>Representación textual del flujo:</strong><br><br>
+        <code>
+        [Incremento 1] → Análisis → Diseño → Código → Pruebas → Entrega → ✓ Sistema v1.0 (Offline)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;↓ retroalimentación<br>
+        [Incremento 2] → Análisis → Diseño → Código → Pruebas → Entrega → ✓ Sistema v2.0 (+Auth)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;↓ retroalimentación<br>
+        [Incremento 3] → Análisis → Diseño → Código → Pruebas → Entrega → ✓ Sistema v3.0 (+Sync)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;↓ retroalimentación<br>
+        [Incremento N] → ... → ✓ Sistema vN.0 (Producto Final)<br>
+        </code>
+    </div>
+
+    <h2>6. Conclusión</h2>
+    <p>El Modelo Incremental demostró ser la metodología idónea para el desarrollo del sistema SIGRE. Permitió entregar funcionalidad real desde las primeras semanas del proyecto, incorporar los cambios surgidos de las entrevistas de campo sin retrocesos costosos, y mantener un ritmo de desarrollo sostenible para un equipo reducido. Cada incremento fue validado directamente por el usuario final (Directora del plantel), garantizando que el producto terminado responda fielmente a las necesidades reales de la administración escolar.</p>
+
+    <hr style="margin-top: 40px;">
+    <p style="text-align: center; color: #7f8c8d; font-size: 11px;">SIGRE — Sistema Integral de Gestión de Recursos Escolares<br>"Menos burocracia, más educación."</p>
+</body>
+</html>
