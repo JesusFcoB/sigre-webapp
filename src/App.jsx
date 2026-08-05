@@ -8,7 +8,7 @@ import AssetsView from './components/views/AssetsView'
 import ClassroomInventoryView from './components/views/ClassroomInventoryView'
 import LoginView from './components/views/LoginView'
 import ValesView from './components/views/ValesView'
-import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut, FileSignature, Cloud, CloudOff, RefreshCw, Users, School, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut, FileSignature, Cloud, CloudOff, RefreshCw, Users, School, ChevronLeft, ChevronRight, MoreHorizontal, X } from 'lucide-react'
 
 import { useStore } from './store/useStore'
 import { syncAll } from './lib/sync'
@@ -30,6 +30,7 @@ function App() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncStatusMsg, setSyncStatusMsg] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -186,13 +187,54 @@ function App() {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile "More" Menu Overlay */}
+      {moreMenuOpen && (
+        <div className="fixed inset-0 z-[60] md:hidden" onClick={() => setMoreMenuOpen(false)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-2xl p-6 pb-8 animate-in slide-in-from-bottom duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-foreground">Más opciones</h3>
+              <button onClick={() => setMoreMenuOpen(false)} className="p-2 rounded-full hover:bg-muted transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {role === 'director' && (
+                <button onClick={() => { setActiveTab('vales'); setMoreMenuOpen(false); }} className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all active:scale-95 ${activeTab === 'vales' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-muted/50 text-muted-foreground hover:bg-muted'}`}>
+                  <FileSignature className="w-6 h-6" />
+                  <span className="text-xs font-bold">Vales</span>
+                </button>
+              )}
+              {role === 'director' && (
+                <button onClick={() => { setActiveTab('conciliation'); setMoreMenuOpen(false); }} className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all active:scale-95 ${activeTab === 'conciliation' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-muted/50 text-muted-foreground hover:bg-muted'}`}>
+                  <FileSpreadsheet className="w-6 h-6" />
+                  <span className="text-xs font-bold">Conciliar</span>
+                </button>
+              )}
+              {role === 'director' && (
+                <button onClick={() => { setActiveTab('locations'); setMoreMenuOpen(false); }} className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all active:scale-95 ${activeTab === 'locations' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-muted/50 text-muted-foreground hover:bg-muted'}`}>
+                  <School className="w-6 h-6" />
+                  <span className="text-xs font-bold">Aulas</span>
+                </button>
+              )}
+              {role === 'director' && (
+                <button onClick={() => { setActiveTab('users'); setMoreMenuOpen(false); }} className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all active:scale-95 ${activeTab === 'users' ? 'bg-primary text-primary-foreground shadow-md' : 'bg-muted/50 text-muted-foreground hover:bg-muted'}`}>
+                  <Users className="w-6 h-6" />
+                  <span className="text-xs font-bold">Usuarios</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation - max 5 items */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-50 px-2 pb-safe md:hidden">
-        <div className="max-w-5xl mx-auto flex justify-around items-center h-20">
+        <div className="max-w-5xl mx-auto flex justify-around items-center h-16">
           {role !== 'profesor' && (
             <NavItem 
               icon={<LayoutDashboard className="w-5 h-5" />} 
-              label="Métricas" 
+              label="Inicio" 
               isActive={activeTab === 'dashboard'} 
               onClick={() => setActiveTab('dashboard')} 
             />
@@ -220,18 +262,10 @@ function App() {
           />
           {role === 'director' && (
             <NavItem 
-              icon={<FileSignature className="w-5 h-5" />} 
-              label="Vales" 
-              isActive={activeTab === 'vales'} 
-              onClick={() => setActiveTab('vales')} 
-            />
-          )}
-          {role === 'director' && (
-            <NavItem 
-              icon={<FileSpreadsheet className="w-5 h-5" />} 
-              label="Conciliar" 
-              isActive={activeTab === 'conciliation'} 
-              onClick={() => setActiveTab('conciliation')} 
+              icon={<MoreHorizontal className="w-5 h-5" />} 
+              label="Más" 
+              isActive={moreMenuOpen || ['vales','conciliation','locations','users'].includes(activeTab)} 
+              onClick={() => setMoreMenuOpen(!moreMenuOpen)} 
             />
           )}
         </div>
