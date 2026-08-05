@@ -317,7 +317,7 @@ export default function ValesView() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-2 pt-1">
-                    {vale.vale_status === 'pending_approval' && (
+                    {vale.vale_status === 'pending_approval' && role !== 'profesor' && (
                       <>
                         <Button className="flex-1 h-10 rounded-xl font-bold bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprove(vale)}>
                           <CheckCircle2 className="w-4 h-4 mr-1.5" /> Aprobar
@@ -327,13 +327,20 @@ export default function ValesView() {
                         </Button>
                       </>
                     )}
+                    {vale.vale_status === 'pending_approval' && role === 'profesor' && (
+                      <div className="flex-1 text-center py-2 text-sm text-amber-600 font-bold bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                        Esperando validación del Directivo
+                      </div>
+                    )}
                     {vale.vale_status === 'active' && (
                       <>
-                        <Button className="flex-1 h-10 rounded-xl font-bold bg-primary hover:bg-primary/90" onClick={() => handleComplete(vale)}>
-                          <RotateCcw className="w-4 h-4 mr-1.5" /> Marcar Devuelto
-                        </Button>
-                        <Button variant="outline" className="h-10 w-10 px-0 rounded-xl" onClick={() => exportVale(vale)} title="Descargar PDF">
-                          <FileText className="w-4 h-4 text-red-500" />
+                        {role !== 'profesor' && (
+                          <Button className="flex-1 h-10 rounded-xl font-bold bg-primary hover:bg-primary/90" onClick={() => handleComplete(vale)}>
+                            <RotateCcw className="w-4 h-4 mr-1.5" /> Marcar Devuelto
+                          </Button>
+                        )}
+                        <Button variant="outline" className={`h-10 ${role === 'profesor' ? 'flex-1 rounded-xl text-primary font-bold border-primary/20 hover:bg-primary/10' : 'w-10 px-0 rounded-xl'}`} onClick={() => exportVale(vale)} title="Descargar PDF">
+                          <FileText className={`w-4 h-4 ${role === 'profesor' ? 'mr-2' : 'text-red-500'}`} /> {role === 'profesor' && 'PDF Vale'}
                         </Button>
                       </>
                     )}
