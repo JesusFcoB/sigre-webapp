@@ -183,7 +183,7 @@ export default function ReportView() {
                 </div>
                 <h3 className="font-bold text-lg text-foreground mb-1">¡Sin fallas pendientes!</h3>
                 <p className="text-xs text-muted-foreground max-w-xs mb-5 font-medium">No existen incidencias activas en el plantel en este momento.</p>
-                <Button onClick={handleOpenCreate} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
+                <Button onClick={() => setDrawerOpen(true)} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
                   <PlusCircle className="w-4 h-4 mr-2" />
                   Reportar Falla
                 </Button>
