@@ -217,6 +217,7 @@ export default function AssetsView() {
   const isLoadingItems = itemsQuery === undefined
   const allItems = itemsQuery || []
   const locations = useLiveQuery(() => db.locations.toArray(), []) || []
+  const allVales = useLiveQuery(() => db.vales.toArray(), []) || []
   const user = useStore((state) => state.user)
   const role = (useStore((state) => state.role) || '').toLowerCase()
 
