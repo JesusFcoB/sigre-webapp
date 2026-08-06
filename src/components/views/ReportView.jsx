@@ -177,9 +177,16 @@ export default function ReportView() {
         {activeTab === 'pending' && (
           <div className="flex flex-col gap-3">
             {pendingTickets.length === 0 ? (
-              <div className="bg-card border-2 border-dashed rounded-2xl p-8 flex flex-col items-center text-center gap-3">
-                <CheckCircle2 className="w-12 h-12 text-success opacity-50" />
-                <p className="text-muted-foreground font-medium">No hay incidencias pendientes.</p>
+              <div className="bg-muted/20 border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="font-bold text-lg text-foreground mb-1">¡Sin fallas pendientes!</h3>
+                <p className="text-xs text-muted-foreground max-w-xs mb-5 font-medium">No existen incidencias activas en el plantel en este momento.</p>
+                <Button onClick={handleOpenCreate} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  Reportar Falla
+                </Button>
               </div>
             ) : (
               pendingTickets.map((ticket) => (

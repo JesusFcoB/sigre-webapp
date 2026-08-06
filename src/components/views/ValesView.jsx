@@ -252,11 +252,24 @@ export default function ValesView() {
 
       {/* Vale Cards */}
       {currentVales.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-          <FileSignature className="w-12 h-12 opacity-30" />
-          <p className="font-medium">
-            {activeTab === 'pending' ? 'No hay solicitudes pendientes' : activeTab === 'active' ? 'No hay préstamos activos' : 'Sin historial de vales'}
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-muted/20 border border-dashed rounded-3xl text-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
+            <FileSignature className="w-8 h-8 opacity-80" />
+          </div>
+          <h3 className="font-bold text-lg text-foreground mb-1">
+            {activeTab === 'pending' ? 'Sin solicitudes pendientes' : activeTab === 'active' ? 'Sin vales activos' : 'Sin historial de préstamos'}
+          </h3>
+          <p className="text-xs text-muted-foreground max-w-xs mb-5 font-medium">
+            {activeTab === 'pending' 
+              ? 'Todas las solicitudes de préstamo han sido procesadas.' 
+              : activeTab === 'active' 
+              ? 'No hay bienes en resguardo o préstamo temporal en este momento.' 
+              : 'El historial de vales completados o rechazados se mostrará aquí.'}
           </p>
+          <Button onClick={() => setDrawerOpen(true)} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4 mr-2" />
+            {role === 'profesor' ? 'Solicitar Préstamo' : 'Generar Nuevo Vale'}
+          </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-3">

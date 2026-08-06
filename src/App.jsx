@@ -122,32 +122,53 @@ function App() {
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       
       {/* Header */}
-      <header className="flex justify-between items-center px-4 py-3 bg-card border-b shadow-sm z-40 relative">
-        <h1 
-          className="text-xl font-bold text-primary tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
-          onClick={() => setActiveTab('dashboard')}
-          title="Ir al inicio"
-        >
-          SIGRE
-        </h1>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border text-xs font-medium">
+      <header className="flex justify-between items-center px-4 py-2.5 bg-card/90 backdrop-blur-md border-b shadow-2xs z-40 relative sticky top-0">
+        <div className="flex items-center gap-3">
+          <h1 
+            className="text-xl font-black text-primary tracking-tight cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1.5"
+            onClick={() => setActiveTab('dashboard')}
+            title="Ir al inicio"
+          >
+            <span className="bg-primary text-primary-foreground text-xs font-extrabold px-2 py-0.5 rounded-lg shadow-2xs">PWA</span>
+            SIGRE
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-muted/60 border text-xs font-semibold">
             {isSyncing ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" />
             ) : isOnline ? (
-              <Cloud className="w-3.5 h-3.5 text-green-500" />
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
             ) : (
               <CloudOff className="w-3.5 h-3.5 text-red-500" />
             )}
             <span className="text-muted-foreground">{syncStatusMsg}</span>
           </div>
 
-          <div className="flex items-center gap-3 border-l pl-4">
-            <span className="text-sm text-muted-foreground hidden md:inline-block font-medium">
-              {user.user_metadata?.name || user.email} <span className="opacity-70">({role})</span>
-            </span>
-            <Button variant="ghost" size="icon" onClick={() => signOut()} title="Cerrar Sesión" className="text-muted-foreground hover:text-destructive">
-              <LogOut className="w-5 h-5" />
+          <div className="flex items-center gap-2.5 border-l pl-3.5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-600 text-white flex items-center justify-center font-extrabold text-xs shadow-sm ring-2 ring-background">
+                {(user.user_metadata?.name || user.email || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="hidden md:flex flex-col text-left">
+                <span className="text-xs font-bold text-foreground max-w-[130px] truncate leading-tight">
+                  {user.user_metadata?.name || user.email}
+                </span>
+                <span className={`text-[10px] font-extrabold capitalize px-1.5 py-0.2 rounded-full border w-fit mt-0.5 ${
+                  role === 'director' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300 dark:border-amber-800' :
+                  role === 'capturista' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' :
+                  'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                }`}>
+                  {role}
+                </span>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => signOut()} title="Cerrar Sesión" className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-full hover:bg-destructive/10">
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>

@@ -684,10 +684,16 @@ export default function AssetsView() {
 
       {/* Items list */}
       {!isLoadingItems && filteredItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-          <Layers className="w-12 h-12 opacity-30" />
-          <p className="font-medium">No se encontraron bienes</p>
-          <p className="text-xs opacity-60">Ajusta los filtros o registra un nuevo bien</p>
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-muted/20 border border-dashed rounded-3xl text-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
+            <Layers className="w-8 h-8 opacity-80" />
+          </div>
+          <h3 className="font-bold text-lg text-foreground mb-1">No se encontraron bienes</h3>
+          <p className="text-xs text-muted-foreground max-w-xs mb-5 font-medium">Ajusta los filtros de búsqueda o registra un nuevo bien mueble en el inventario.</p>
+          <Button onClick={openCreate} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
+            <PackagePlus className="w-4 h-4 mr-2" />
+            Registrar Primer Bien
+          </Button>
         </div>
       ) : (
         <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
