@@ -52,7 +52,7 @@ export default function ValesView() {
   
   const valesQuery = useLiveQuery(() => db.vales.toArray()) || []
   const allItems = useLiveQuery(() => db.items.toArray()) || []
-  const items = useMemo(() => allItems.filter(i => i.status !== 'discarded'), [allItems])
+  const items = useMemo(() => allItems.filter(i => i.status !== 'discarded' && i.sync_status !== 'pending_delete'), [allItems])
   const locations = useLiveQuery(() => db.locations.toArray()) || []
 
   const itemMap = useMemo(() => {
