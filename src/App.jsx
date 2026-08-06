@@ -84,18 +84,25 @@ function App() {
     seedLocations();
   }, []);
 
+  // Redirect non-directors away from dashboard if active
+  useEffect(() => {
+    if (user && role !== 'director' && activeTab === 'dashboard') {
+      setActiveTab('assets')
+    }
+  }, [user, role, activeTab])
+
   const renderView = () => {
     switch (activeTab) {
-      case 'dashboard': return <DashboardView navigateTo={setActiveTab} />
+      case 'dashboard': return role === 'director' ? <DashboardView navigateTo={setActiveTab} /> : <AssetsView />
       case 'assets': return <AssetsView />
       case 'scanner': return <ScannerView navigateTo={setActiveTab} />
       case 'report': return <ReportView />
       case 'vales': return <ValesView />
-      case 'conciliation': return <ConciliationView />
+      case 'conciliation': return role === 'director' ? <ConciliationView /> : <AssetsView />
       case 'classroom_inventory': return <ClassroomInventoryView navigateTo={setActiveTab} />
-      case 'locations': return <LocationsView navigateTo={setActiveTab} />
-      case 'users': return role === 'director' ? <UserManagementView /> : <DashboardView />
-      default: return <DashboardView />
+      case 'locations': return role === 'director' ? <LocationsView navigateTo={setActiveTab} /> : <AssetsView />
+      case 'users': return role === 'director' ? <UserManagementView /> : <AssetsView />
+      default: return role === 'director' ? <DashboardView /> : <AssetsView />
     }
   }
 
@@ -104,12 +111,14 @@ function App() {
   }
 
   // Build sidebar nav items based on role
-  const navItems = [
-    { id: 'dashboard', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
-    { id: 'assets', icon: <Package className="w-5 h-5" />, label: 'Bienes' },
-    { id: 'scanner', icon: <QrCode className="w-5 h-5" />, label: 'Escáner QR' },
-    { id: 'report', icon: <AlertCircle className="w-5 h-5" />, label: 'Reportar' },
-  ]
+  const navItems = []
+  if (role === 'director') {
+    navItems.push({ id: 'dashboard', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' })
+  }
+  navItems.push({ id: 'assets', icon: <Package className="w-5 h-5" />, label: 'Bienes' })
+  navItems.push({ id: 'scanner', icon: <QrCode className="w-5 h-5" />, label: 'Escáner QR' })
+  navItems.push({ id: 'report', icon: <AlertCircle className="w-5 h-5" />, label: 'Reportar' })
+  
   if (role === 'profesor') {
     navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Mis Vales' })
   }
@@ -128,8 +137,8 @@ function App() {
         <div className="flex items-center gap-2">
           <h1 
             className="text-lg sm:text-xl font-black text-primary tracking-tight cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1.5"
-            onClick={() => setActiveTab('dashboard')}
-            title="Ir al inicio"
+            onClick={() => setActiveTab(role === 'director' ? 'dashboard' : 'assets')}
+            title="Ir a inicio"
           >
             <span className="bg-primary text-primary-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded-lg shadow-2xs">PWA</span>
             SIGRE
@@ -260,12 +269,14 @@ function App() {
       {/* Mobile Bottom Navigation - 5 items */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-50 px-1 pb-safe md:hidden">
         <div className="max-w-5xl mx-auto flex justify-around items-center h-16">
-          <NavItem 
-            icon={<LayoutDashboard className="w-5 h-5" />} 
-            label="Inicio" 
-            isActive={activeTab === 'dashboard'} 
-            onClick={() => setActiveTab('dashboard')} 
-          />
+          {role === 'director' && (
+            <NavItem 
+              icon={<LayoutDashboard className="w-5 h-5" />} 
+              label="Inicio" 
+              isActive={activeTab === 'dashboard'} 
+              onClick={() => setActiveTab('dashboard')} 
+            />
+          )}
           <NavItem 
             icon={<Package className="w-5 h-5" />} 
             label="Bienes" 
@@ -285,14 +296,15 @@ function App() {
             isActive={activeTab === 'report'} 
             onClick={() => setActiveTab('report')} 
           />
-          {role === 'profesor' ? (
+          {role === 'profesor' && (
             <NavItem 
               icon={<FileSignature className="w-5 h-5" />} 
               label="Mis Vales" 
               isActive={activeTab === 'vales'} 
               onClick={() => setActiveTab('vales')} 
             />
-          ) : (
+          )}
+          {role === 'director' && (
             <NavItem 
               icon={<MoreHorizontal className="w-5 h-5" />} 
               label="Más" 

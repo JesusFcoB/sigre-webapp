@@ -217,20 +217,22 @@ export default function ValesView() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{pendingVales.length}</p>
-          <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">Por Aprobar</p>
+      {role === 'director' && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
+            <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{pendingVales.length}</p>
+            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">Por Aprobar</p>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+            <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{activeVales.length}</p>
+            <p className="text-[10px] font-bold text-blue-600 dark:text-blue-500 uppercase tracking-wider">Prestados</p>
+          </div>
+          <div className={`rounded-xl p-3 text-center border ${expiredCount > 0 ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'}`}>
+            <p className={`text-2xl font-bold ${expiredCount > 0 ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>{expiredCount}</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider ${expiredCount > 0 ? 'text-red-600 dark:text-red-500' : 'text-green-600 dark:text-green-500'}`}>Vencidos</p>
+          </div>
         </div>
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{activeVales.length}</p>
-          <p className="text-[10px] font-bold text-blue-600 dark:text-blue-500 uppercase tracking-wider">Prestados</p>
-        </div>
-        <div className={`rounded-xl p-3 text-center border ${expiredCount > 0 ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'}`}>
-          <p className={`text-2xl font-bold ${expiredCount > 0 ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>{expiredCount}</p>
-          <p className={`text-[10px] font-bold uppercase tracking-wider ${expiredCount > 0 ? 'text-red-600 dark:text-red-500' : 'text-green-600 dark:text-green-500'}`}>Vencidos</p>
-        </div>
-      </div>
+      )}
 
       {/* Tabs */}
       <div className="flex bg-muted p-1 rounded-xl">

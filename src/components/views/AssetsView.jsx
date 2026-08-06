@@ -217,8 +217,8 @@ export default function AssetsView() {
   const isLoadingItems = itemsQuery === undefined
   const allItems = itemsQuery || []
   const locations = useLiveQuery(() => db.locations.toArray(), []) || []
-  const allVales = useLiveQuery(() => db.vales.toArray(), []) || []
-  const role = useStore((state) => state.role);
+  const user = useStore((state) => state.user)
+  const role = (useStore((state) => state.role) || '').toLowerCase()
 
   // Map of item_id -> active vale for loan badge display
   const activeValeMap = useMemo(() => {
@@ -309,12 +309,33 @@ export default function AssetsView() {
     return m
   }, [locations])
 
+  const teacherName = (user?.user_metadata?.name || user?.email || '').toLowerCase()
+
   const filteredItems = useMemo(() => {
+    // Find locations assigned to this teacher if role is profesor
+    const teacherLocationIds = new Set()
+    if (role === 'profesor' && teacherName) {
+      locations.forEach(l => {
+        const resp = (l.responsible_name || '').toLowerCase()
+        if (resp && (resp.includes(teacherName) || teacherName.includes(resp))) {
+          teacherLocationIds.add(l.id)
+          teacherLocationIds.add(l.name.toLowerCase())
+        }
+      })
+    }
+
     return allItems.filter(item => {
       if (item.sync_status === 'pending_delete') return false;
       const isDiscarded = item.status === 'discarded'
       if (activeTab === 'active' && isDiscarded) return false
       if (activeTab === 'discarded' && !isDiscarded) return false
+
+      // If professor, only show items from their assigned classroom(s) if any assigned
+      if (role === 'profesor' && teacherLocationIds.size > 0) {
+        const itemLoc = (item.location_id || '').toLowerCase()
+        const isAssigned = teacherLocationIds.has(item.location_id) || teacherLocationIds.has(itemLoc) || teacherLocationIds.has(locationMap[item.location_id]?.name?.toLowerCase())
+        if (!isAssigned) return false
+      }
 
       const matchSearch = !search || (item.description || '').toLowerCase().includes(search.toLowerCase()) || (item.serial_number || '').toLowerCase().includes(search.toLowerCase())
 
@@ -326,7 +347,7 @@ export default function AssetsView() {
       const matchCategory = !filterCategory || item.category === filterCategory || (!item.category && filterCategory === "Otro")
       return matchSearch && matchLocation && matchCondition && matchCategory
     })
-  }, [allItems, search, filterLocation, filterConditions, filterCategory, activeTab])
+  }, [allItems, search, filterLocation, filterConditions, filterCategory, activeTab, role, teacherName, locations, locationMap])
 
   const buildDetail = (item) => {
     const sameDesc = allItems.filter(i => i.description?.toLowerCase() === item.description?.toLowerCase())
@@ -584,12 +605,16 @@ export default function AssetsView() {
           <p className="text-muted-foreground text-sm mt-0.5">{filteredItems.length} de {allItems.length} registros</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportExcel} title="Exportar Excel">
-            <FileSpreadsheet className="w-4 h-4 text-green-600" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportPDF} title="Exportar PDF">
-            <FileText className="w-4 h-4 text-red-500" />
-          </Button>
+          {role === 'director' && (
+            <>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportExcel} title="Exportar Excel">
+                <FileSpreadsheet className="w-4 h-4 text-green-600" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportPDF} title="Exportar PDF">
+                <FileText className="w-4 h-4 text-red-500" />
+              </Button>
+            </>
+          )}
           <Button onClick={openCreate} className="h-10 rounded-xl font-bold gap-1.5 bg-primary hover:bg-primary/90">
             <PackagePlus className="w-4 h-4" />
             <span className="hidden sm:inline">Nuevo Bien</span>

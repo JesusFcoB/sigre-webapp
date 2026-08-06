@@ -28,7 +28,8 @@ export default function ReportView() {
   const [errorMsg, setErrorMsg] = useState('')
   const editingTicket = useStore((state) => state.editingTicket)
   const setEditingTicket = useStore((state) => state.setEditingTicket)
-  const role = useStore((state) => state.role)
+  const role = (useStore((state) => state.role) || '').toLowerCase()
+  const user = useStore((state) => state.user)
 
   const tickets = useLiveQuery(() => db.tickets.toArray()) || []
   const locations = useLiveQuery(() => db.locations.toArray()) || []
@@ -39,9 +40,20 @@ export default function ReportView() {
     return m
   }, [locations])
 
-  // Split tickets by status (default is pending if not set)
-  const pendingTickets = tickets.filter(t => t.status !== 'solved' && t.sync_status !== 'pending_delete')
-  const solvedTickets = tickets.filter(t => t.status === 'solved' && t.sync_status !== 'pending_delete')
+  const userEmail = (user?.email || '').toLowerCase()
+  const userName = (user?.user_metadata?.name || '').toLowerCase()
+
+  // Split tickets by status, filtered by user if profesor
+  const myTickets = useMemo(() => {
+    if (role !== 'profesor') return tickets;
+    return tickets.filter(t => {
+      const rep = (t.reported_by || '').toLowerCase()
+      return rep && (rep === userEmail || rep === userName || userEmail.includes(rep))
+    })
+  }, [tickets, role, userEmail, userName])
+
+  const pendingTickets = myTickets.filter(t => t.status !== 'solved' && t.sync_status !== 'pending_delete')
+  const solvedTickets = myTickets.filter(t => t.status === 'solved' && t.sync_status !== 'pending_delete')
 
   // Set form data if editing
   React.useEffect(() => {
@@ -88,6 +100,7 @@ export default function ReportView() {
         await db.tickets.add({
           ...formData,
           reported_at: new Date().toISOString(),
+          reported_by: user?.email || user?.user_metadata?.name || 'Profesor',
           status: 'pending',
           sync_status: 'pending_create'
         })
