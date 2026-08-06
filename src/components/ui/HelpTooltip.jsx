@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { HelpCircle, X } from 'lucide-react'
 
-export default function HelpTooltip({ text, title, className = "" }) {
+export default function HelpTooltip({ text, title, inverted = false, className = "" }) {
   const [isOpen, setIsOpen] = useState(false)
   const tooltipRef = useRef(null)
 
@@ -21,6 +21,10 @@ export default function HelpTooltip({ text, title, className = "" }) {
     }
   }, [isOpen])
 
+  const buttonStyle = inverted
+    ? "text-primary-foreground/80 hover:text-white hover:bg-white/20"
+    : "text-muted-foreground hover:text-primary hover:bg-primary/10 dark:text-muted-foreground/80 dark:hover:text-primary dark:hover:bg-primary/10"
+
   return (
     <span className={`relative inline-flex items-center ${className}`} ref={tooltipRef}>
       <button
@@ -28,7 +32,7 @@ export default function HelpTooltip({ text, title, className = "" }) {
         onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
-        className="p-1 rounded-full text-primary-foreground/70 hover:text-white hover:bg-white/20 dark:text-muted-foreground/60 dark:hover:text-primary dark:hover:bg-primary/10 transition-colors outline-none cursor-pointer"
+        className={`p-1 rounded-full transition-colors outline-none cursor-pointer ${buttonStyle}`}
         aria-label="Ayuda"
         title="Ver ayuda"
       >

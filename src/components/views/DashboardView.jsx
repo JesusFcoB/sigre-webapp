@@ -82,6 +82,7 @@ export default function DashboardView({ navigateTo }) {
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               SIGRE
               <HelpTooltip 
+                inverted={true}
                 title="Panel Principal de Control" 
                 text="Vista ejecutiva del inventario escolar. Visualiza métricas generales, estado físico del equipo registrado y la bitácora local de registros en tiempo real." 
               />
