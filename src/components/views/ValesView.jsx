@@ -61,6 +61,12 @@ export default function ValesView() {
     return m
   }, [allItems])
 
+  const locationMap = useMemo(() => {
+    const m = {}
+    locations.forEach(l => { m[l.id] = l })
+    return m
+  }, [locations])
+
   // Filter vales by sync_status (exclude pending_delete) and by role
   const vales = useMemo(() => {
     const filtered = valesQuery.filter(v => v.sync_status !== 'pending_delete')
@@ -410,11 +416,13 @@ export default function ValesView() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">Bien Asignado *</label>
+                  <label className="text-sm font-bold">Bien Solicitado / Asignado *</label>
                   <Select value={formData.item_id} onChange={e => setFormData(p => ({ ...p, item_id: e.target.value }))} required>
-                    <option value="" disabled>Seleccione un bien...</option>
+                    <option value="" disabled>Seleccione cualquier bien del inventario escolar...</option>
                     {items.map(item => (
-                      <option key={item.id} value={item.id}>{item.description} {item.serial_number ? `(${item.serial_number})` : ''}</option>
+                      <option key={item.id} value={item.id}>
+                        {item.description} — {locationMap[item.location_id]?.name || 'Plantel'} {item.serial_number ? `(${item.serial_number})` : ''}
+                      </option>
                     ))}
                   </Select>
                 </div>
