@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { Wifi, WifiOff, Box, AlertTriangle, CheckCircle2, List, Edit2, Trash2, Moon, Sun, HelpCircle } from "lucide-react"
 
+import HelpTooltip from '@/components/ui/HelpTooltip'
+
 export default function DashboardView({ navigateTo }) {
   const isOnline = useStore((state) => state.isOnline)
   const setOnlineStatus = useStore((state) => state.setOnlineStatus)
@@ -137,16 +139,14 @@ export default function DashboardView({ navigateTo }) {
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-green-500 shadow-sm relative group">
+            <Card className="border-l-4 border-l-green-500 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                   Tasa de Conciliación
-                  <span className="relative">
-                    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/50 cursor-help" />
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-foreground text-background text-[11px] leading-relaxed rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                      Porcentaje de bienes sincronizados con la nube respecto al total registrado. 100% = todo está respaldado.
-                    </span>
-                  </span>
+                  <HelpTooltip 
+                    title="Tasa de Sincronización" 
+                    text="Porcentaje de bienes sincronizados con la nube respecto al total registrado. 100% indica que todo tu inventario está respaldado." 
+                  />
                 </CardTitle>
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
               </CardHeader>

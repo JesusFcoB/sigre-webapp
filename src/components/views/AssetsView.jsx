@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
+import HelpTooltip from '@/components/ui/HelpTooltip'
 import { db } from "@/lib/db"
 import { syncItemsToSupabase } from "@/lib/sync"
 import { useLiveQuery } from "dexie-react-hooks"
@@ -575,12 +576,10 @@ export default function AssetsView() {
         <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Package className="w-6 h-6 text-primary" /> Bienes
-            <span className="relative group/tip">
-              <HelpCircle className="w-4.5 h-4.5 text-muted-foreground/50 cursor-help" />
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-foreground text-background text-[11px] leading-relaxed rounded-xl shadow-lg opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50">
-                Inventario completo de bienes muebles del plantel. Registra, edita, filtra y exporta equipos con foto, número de serie, condición y ubicación.
-              </span>
-            </span>
+            <HelpTooltip 
+              title="Inventario de Bienes" 
+              text="Inventario completo de bienes muebles del plantel. Puedes registrar, editar, filtrar por estado/ubicación y exportar reportes en Excel o PDF." 
+            />
           </h2>
           <p className="text-muted-foreground text-sm mt-0.5">{filteredItems.length} de {allItems.length} registros</p>
         </div>

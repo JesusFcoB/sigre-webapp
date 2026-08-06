@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import HelpTooltip from '@/components/ui/HelpTooltip'
 import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useStore } from '@/store/useStore'
@@ -141,12 +142,10 @@ export default function ReportView() {
         <h2 className="text-3xl font-bold flex items-center gap-3 text-foreground tracking-tight">
           <ShieldAlert className="w-8 h-8 text-primary" />
           Reportes de Falla
-          <span className="relative group/tip">
-            <HelpCircle className="w-5 h-5 text-muted-foreground/50 cursor-help" />
-            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-foreground text-background text-[11px] leading-relaxed rounded-xl shadow-lg opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50">
-              Registra incidencias de infraestructura escolar (fallas eléctricas, plomería, mobiliario dañado, etc.) con evidencia fotográfica para dar seguimiento a su resolución.
-            </span>
-          </span>
+          <HelpTooltip 
+            title="Reportes de Incidencias" 
+            text="Registra incidencias de infraestructura escolar (fallas eléctricas, plomería, mobiliario dañado, etc.) con evidencia fotográfica para dar seguimiento a su resolución." 
+          />
         </h2>
         <p className="text-muted-foreground font-medium">Gestiona incidencias e infraestructura.</p>
       </div>

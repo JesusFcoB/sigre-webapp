@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import HelpTooltip from '@/components/ui/HelpTooltip'
 import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Button } from '@/components/ui/button'
@@ -198,14 +199,12 @@ export default function ValesView() {
         <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <FileSignature className="w-6 h-6 text-primary" /> {role === 'profesor' ? 'Mis Vales' : 'Vales de Resguardo'}
-            <span className="relative group/tip">
-              <HelpCircle className="w-4.5 h-4.5 text-muted-foreground/50 cursor-help" />
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-foreground text-background text-[11px] leading-relaxed rounded-xl shadow-lg opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50">
-                {role === 'profesor'
-                  ? 'Solicita préstamos de bienes al Director. Puedes dar seguimiento al estado de tus solicitudes desde aquí.'
-                  : 'Administra préstamos de bienes a docentes. Genera vales con firma digital, aprueba solicitudes y controla devoluciones con fechas límite.'}
-              </span>
-            </span>
+            <HelpTooltip 
+              title={role === 'profesor' ? 'Solicitudes de Vale' : 'Vales de Resguardo'}
+              text={role === 'profesor'
+                ? 'Solicita préstamos de bienes al Director. Puedes dar seguimiento al estado de tus solicitudes desde aquí.'
+                : 'Administra préstamos de bienes a docentes. Genera vales con firma digital, aprueba solicitudes y controla devoluciones con fechas límite.'}
+            />
           </h2>
           <p className="text-muted-foreground text-sm mt-0.5">
             {role === 'profesor' ? 'Seguimiento de tus solicitudes de préstamo' : 'Control de préstamos de bienes'}

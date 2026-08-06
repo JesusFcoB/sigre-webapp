@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react'
+import HelpTooltip from '@/components/ui/HelpTooltip'
 import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useStore } from '@/store/useStore'
@@ -203,12 +204,10 @@ export default function LocationsView({ navigateTo }) {
         <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             Gestión de Aulas
-            <span className="relative group/tip">
-              <HelpCircle className="w-4.5 h-4.5 text-muted-foreground/50 cursor-help" />
-              <span className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-foreground text-background text-[11px] leading-relaxed rounded-xl shadow-lg opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50">
-                Registra las aulas y espacios del plantel con su docente responsable. Genera códigos QR únicos para pegarlos en las puertas y facilitar el escaneo del inventario.
-              </span>
-            </span>
+            <HelpTooltip 
+              title="Gestión de Aulas" 
+              text="Registra las aulas y espacios del plantel con su docente responsable. Genera códigos QR únicos para pegarlos en las puertas y facilitar el escaneo del inventario." 
+            />
           </h2>
           <p className="text-muted-foreground text-sm">Administra los espacios escolares y sus docentes responsables</p>
         </div>
