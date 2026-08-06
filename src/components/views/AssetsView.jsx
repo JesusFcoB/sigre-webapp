@@ -111,7 +111,7 @@ function LocationAutocomplete({ locations, value, onChange }) {
 
   const filtered = useMemo(() => {
     if (!search.trim()) return locations;
-    return locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()));
+    return locations.filter(l => (l.name || '').toLowerCase().includes(search.toLowerCase()));
   }, [locations, search]);
 
   return (
@@ -122,7 +122,7 @@ function LocationAutocomplete({ locations, value, onChange }) {
           const val = e.target.value;
           setSearch(val);
           setOpen(true);
-          const exact = locations.find(l => l.name.toLowerCase() === val.toLowerCase());
+          const exact = locations.find(l => (l.name || '').toLowerCase() === val.toLowerCase());
           onChange(exact ? exact.id : val);
         }}
         onFocus={() => setOpen(true)}
@@ -318,8 +318,8 @@ export default function AssetsView() {
       locations.forEach(l => {
         const resp = (l.responsible_name || '').toLowerCase()
         if (resp && (resp.includes(teacherName) || teacherName.includes(resp))) {
-          teacherLocationIds.add(l.id)
-          teacherLocationIds.add(l.name.toLowerCase())
+          if (l.id) teacherLocationIds.add(l.id)
+          if (l.name) teacherLocationIds.add(l.name.toLowerCase())
         }
       })
     }
