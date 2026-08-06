@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { UploadCloud, FileSpreadsheet, Check, AlertTriangle, AlertCircle, Loader2, Download, DatabaseZap, X } from "lucide-react"
+import { UploadCloud, FileSpreadsheet, Check, AlertTriangle, AlertCircle, Loader2, Download, DatabaseZap, X, HelpCircle } from "lucide-react"
 import * as XLSX from 'xlsx'
 import { db } from '@/lib/db'
 
@@ -245,7 +245,15 @@ export default function ConciliationView() {
       {/* Header */}
       <div className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Módulo de Conciliación</h2>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            Módulo de Conciliación
+            <span className="relative group/tip">
+              <HelpCircle className="w-4.5 h-4.5 text-muted-foreground/50 cursor-help" />
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-foreground text-background text-[11px] leading-relaxed rounded-xl shadow-lg opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50">
+                Compara el archivo Excel oficial de la SEC (Secretaría de Educación) con los bienes registrados en tu dispositivo. Identifica coincidencias, faltantes y sobrantes para mantener tu inventario actualizado.
+              </span>
+            </span>
+          </h2>
           <p className="text-muted-foreground mt-1 text-sm">Sincroniza e importa el padrón de la SEC</p>
         </div>
         {fileData && (

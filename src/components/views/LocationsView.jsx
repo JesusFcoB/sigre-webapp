@@ -5,7 +5,7 @@ import { useStore } from '@/store/useStore'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, School, User, PlusCircle, Trash2, Edit2, Save, X, AlertCircle, QrCode, Download, Check } from "lucide-react"
+import { ArrowLeft, School, User, PlusCircle, Trash2, Edit2, Save, X, AlertCircle, QrCode, Download, Check, HelpCircle } from "lucide-react"
 import { QRCodeCanvas } from 'qrcode.react'
 
 export default function LocationsView({ navigateTo }) {
@@ -201,7 +201,15 @@ export default function LocationsView({ navigateTo }) {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Gestión de Aulas</h2>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            Gestión de Aulas
+            <span className="relative group/tip">
+              <HelpCircle className="w-4.5 h-4.5 text-muted-foreground/50 cursor-help" />
+              <span className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-foreground text-background text-[11px] leading-relaxed rounded-xl shadow-lg opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50">
+                Registra las aulas y espacios del plantel con su docente responsable. Genera códigos QR únicos para pegarlos en las puertas y facilitar el escaneo del inventario.
+              </span>
+            </span>
+          </h2>
           <p className="text-muted-foreground text-sm">Administra los espacios escolares y sus docentes responsables</p>
         </div>
       </div>

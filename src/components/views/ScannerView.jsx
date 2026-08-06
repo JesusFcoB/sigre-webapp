@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { QrCode, Camera, AlertCircle, FileText, CheckCircle2, MapPin, UserCircle, FileSignature, X, PenTool } from "lucide-react"
+import { QrCode, Camera, AlertCircle, FileText, CheckCircle2, MapPin, UserCircle, FileSignature, X, PenTool, HelpCircle } from "lucide-react"
 import BarcodeScanner from '@/components/ui/BarcodeScanner'
 import SignatureModal from '@/components/ui/SignatureModal'
 import { useStore } from '@/store/useStore'
@@ -93,7 +93,15 @@ export default function ScannerView({ navigateTo }) {
 
       {/* Header */}
       <div className="text-center py-4">
-        <h2 className="text-2xl font-bold text-foreground">Escáner de Aulas</h2>
+        <h2 className="text-2xl font-bold text-foreground flex items-center justify-center gap-2">
+          Escáner de Aulas
+          <span className="relative group/tip">
+            <HelpCircle className="w-4.5 h-4.5 text-muted-foreground/50 cursor-help" />
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-foreground text-background text-[11px] leading-relaxed rounded-xl shadow-lg opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-50">
+              Escanea el código QR pegado en la puerta de un aula para ver su inventario, verificar bienes y solicitar préstamos rápidamente.
+            </span>
+          </span>
+        </h2>
         <p className="text-muted-foreground mt-1 text-sm">Ubica el QR en el marco de la puerta</p>
       </div>
 
