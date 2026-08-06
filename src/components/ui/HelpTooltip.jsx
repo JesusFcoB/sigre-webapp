@@ -28,7 +28,7 @@ export default function HelpTooltip({ text, title, className = "" }) {
         onClick={() => setIsOpen(!isOpen)}
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
-        className="p-1 rounded-full text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+        className="p-1 rounded-full text-primary-foreground/70 hover:text-white hover:bg-white/20 dark:text-muted-foreground/60 dark:hover:text-primary dark:hover:bg-primary/10 transition-colors outline-none cursor-pointer"
         aria-label="Ayuda"
         title="Ver ayuda"
       >
@@ -37,26 +37,26 @@ export default function HelpTooltip({ text, title, className = "" }) {
 
       {isOpen && (
         <div 
-          className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 p-3.5 bg-popover text-popover-foreground text-xs leading-relaxed rounded-2xl shadow-xl border border-border/80 z-[100] animate-in fade-in zoom-in-95 duration-200"
-          style={{ filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.15))' }}
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 p-4 bg-slate-900 text-slate-100 text-xs leading-relaxed rounded-2xl shadow-2xl border border-slate-700/80 z-[100] animate-in fade-in zoom-in-95 duration-200"
+          style={{ filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.35))' }}
         >
           {/* Arrow */}
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-px w-0 h-0 border-x-8 border-x-transparent border-b-8 border-b-border" />
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-popover" />
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-px w-0 h-0 border-x-8 border-x-transparent border-b-8 border-b-slate-700/80" />
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-slate-900" />
 
           {title && (
-            <div className="font-bold text-sm text-foreground mb-1 flex items-center justify-between">
+            <div className="font-bold text-sm text-slate-100 mb-1.5 flex items-center justify-between border-b border-slate-800 pb-1.5">
               <span>{title}</span>
               <button 
                 onClick={() => setIsOpen(false)} 
-                className="text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+                className="text-slate-400 hover:text-white p-0.5 rounded-full"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
           
-          <p className="text-muted-foreground font-normal leading-normal">{text}</p>
+          <p className="text-slate-300 font-normal leading-relaxed">{text}</p>
         </div>
       )}
     </span>

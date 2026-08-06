@@ -79,7 +79,13 @@ export default function DashboardView({ navigateTo }) {
       <div className="flex flex-col gap-4 bg-primary text-primary-foreground p-6 rounded-b-3xl shadow-md -mx-4 -mt-4 md:rounded-2xl md:mx-0 md:mt-0">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">SIGRE</h1>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              SIGRE
+              <HelpTooltip 
+                title="Panel Principal de Control" 
+                text="Vista ejecutiva del inventario escolar. Visualiza métricas generales, estado físico del equipo registrado y la bitácora local de registros en tiempo real." 
+              />
+            </h1>
             <p className="text-primary-foreground/80 text-sm font-medium">Panel Directivo</p>
           </div>
           <div className="flex items-center gap-2">
