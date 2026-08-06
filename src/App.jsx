@@ -104,13 +104,15 @@ function App() {
   }
 
   // Build sidebar nav items based on role
-  const navItems = []
-  if (role !== 'profesor') {
-    navItems.push({ id: 'dashboard', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' })
-    navItems.push({ id: 'assets', icon: <Package className="w-5 h-5" />, label: 'Bienes' })
+  const navItems = [
+    { id: 'dashboard', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
+    { id: 'assets', icon: <Package className="w-5 h-5" />, label: 'Bienes' },
+    { id: 'scanner', icon: <QrCode className="w-5 h-5" />, label: 'Escáner QR' },
+    { id: 'report', icon: <AlertCircle className="w-5 h-5" />, label: 'Reportar' },
+  ]
+  if (role === 'profesor') {
+    navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Mis Vales' })
   }
-  navItems.push({ id: 'scanner', icon: <QrCode className="w-5 h-5" />, label: 'Escáner QR' })
-  navItems.push({ id: 'report', icon: <AlertCircle className="w-5 h-5" />, label: 'Reportar' })
   if (role === 'director') {
     navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Vales' })
     navItems.push({ id: 'conciliation', icon: <FileSpreadsheet className="w-5 h-5" />, label: 'Conciliación' })
@@ -122,19 +124,19 @@ function App() {
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       
       {/* Header */}
-      <header className="flex justify-between items-center px-4 py-2.5 bg-card/90 backdrop-blur-md border-b shadow-2xs z-40 relative sticky top-0">
-        <div className="flex items-center gap-3">
+      <header className="flex justify-between items-center px-3.5 py-2.5 bg-card/90 backdrop-blur-md border-b shadow-2xs z-40 relative sticky top-0">
+        <div className="flex items-center gap-2">
           <h1 
-            className="text-xl font-black text-primary tracking-tight cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1.5"
+            className="text-lg sm:text-xl font-black text-primary tracking-tight cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1.5"
             onClick={() => setActiveTab('dashboard')}
             title="Ir al inicio"
           >
-            <span className="bg-primary text-primary-foreground text-xs font-extrabold px-2 py-0.5 rounded-lg shadow-2xs">PWA</span>
+            <span className="bg-primary text-primary-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded-lg shadow-2xs">PWA</span>
             SIGRE
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-muted/60 border text-xs font-semibold">
             {isSyncing ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" />
@@ -149,16 +151,16 @@ function App() {
             <span className="text-muted-foreground">{syncStatusMsg}</span>
           </div>
 
-          <div className="flex items-center gap-2.5 border-l pl-3.5">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-600 text-white flex items-center justify-center font-extrabold text-xs shadow-sm ring-2 ring-background">
+          <div className="flex items-center gap-2 sm:gap-2.5 border-l pl-2.5 sm:pl-3.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-primary to-blue-600 text-white flex items-center justify-center font-extrabold text-xs shadow-xs ring-2 ring-background shrink-0">
                 {(user.user_metadata?.name || user.email || 'U').charAt(0).toUpperCase()}
               </div>
-              <div className="hidden md:flex flex-col text-left">
-                <span className="text-xs font-bold text-foreground max-w-[130px] truncate leading-tight">
-                  {user.user_metadata?.name || user.email}
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-bold text-foreground max-w-[90px] sm:max-w-[140px] truncate leading-tight">
+                  {user.user_metadata?.name || user.email?.split('@')[0]}
                 </span>
-                <span className={`text-[10px] font-extrabold capitalize px-1.5 py-0.2 rounded-full border w-fit mt-0.5 ${
+                <span className={`text-[9px] sm:text-[10px] font-extrabold capitalize px-1.5 py-0.2 rounded-full border w-fit mt-0.5 ${
                   role === 'director' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300 dark:border-amber-800' :
                   role === 'capturista' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' :
                   'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border-blue-300 dark:border-blue-800'
@@ -167,7 +169,7 @@ function App() {
                 </span>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => signOut()} title="Cerrar Sesión" className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-full hover:bg-destructive/10">
+            <Button variant="ghost" size="icon" onClick={() => signOut()} title="Cerrar Sesión" className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-full hover:bg-destructive/10 shrink-0">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -255,25 +257,21 @@ function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation - max 5 items */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-50 px-2 pb-safe md:hidden">
+      {/* Mobile Bottom Navigation - 5 items */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-50 px-1 pb-safe md:hidden">
         <div className="max-w-5xl mx-auto flex justify-around items-center h-16">
-          {role !== 'profesor' && (
-            <NavItem 
-              icon={<LayoutDashboard className="w-5 h-5" />} 
-              label="Inicio" 
-              isActive={activeTab === 'dashboard'} 
-              onClick={() => setActiveTab('dashboard')} 
-            />
-          )}
-          {role !== 'profesor' && (
-            <NavItem 
-              icon={<Package className="w-5 h-5" />} 
-              label="Bienes" 
-              isActive={activeTab === 'assets'} 
-              onClick={() => setActiveTab('assets')} 
-            />
-          )}
+          <NavItem 
+            icon={<LayoutDashboard className="w-5 h-5" />} 
+            label="Inicio" 
+            isActive={activeTab === 'dashboard'} 
+            onClick={() => setActiveTab('dashboard')} 
+          />
+          <NavItem 
+            icon={<Package className="w-5 h-5" />} 
+            label="Bienes" 
+            isActive={activeTab === 'assets'} 
+            onClick={() => setActiveTab('assets')} 
+          />
           <NavItem 
             icon={<QrCode className="w-6 h-6" />} 
             label="Escáner" 
@@ -287,15 +285,14 @@ function App() {
             isActive={activeTab === 'report'} 
             onClick={() => setActiveTab('report')} 
           />
-          {role === 'profesor' && (
+          {role === 'profesor' ? (
             <NavItem 
               icon={<FileSignature className="w-5 h-5" />} 
               label="Mis Vales" 
               isActive={activeTab === 'vales'} 
               onClick={() => setActiveTab('vales')} 
             />
-          )}
-          {role === 'director' && (
+          ) : (
             <NavItem 
               icon={<MoreHorizontal className="w-5 h-5" />} 
               label="Más" 
