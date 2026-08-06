@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { HelpCircle, X, Info } from 'lucide-react'
+import { HelpCircle, Info } from 'lucide-react'
 
 export default function HelpTooltip({ text, title, inverted = false, className = "" }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -29,44 +29,23 @@ export default function HelpTooltip({ text, title, inverted = false, className =
 
   const modalContent = isOpen ? (
     <div 
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
       onClick={() => setIsOpen(false)}
+      onMouseLeave={() => setIsOpen(false)}
     >
       <div 
-        className="bg-slate-900 text-slate-100 p-6 rounded-3xl shadow-2xl border border-slate-700/80 w-full max-w-sm animate-in zoom-in-95 duration-200 relative overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-900 text-slate-100 p-5 rounded-3xl shadow-2xl border border-slate-700/80 w-full max-w-xs animate-in zoom-in-95 duration-150 relative overflow-hidden"
       >
         {/* Top Accent Line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-primary to-indigo-500" />
 
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-          <div className="flex items-center gap-2.5 font-bold text-base text-slate-100">
-            <div className="p-1.5 rounded-full bg-primary/20 text-primary">
-              <Info className="w-4 h-4" />
-            </div>
-            <span>{title || "Información"}</span>
-          </div>
-          <button 
-            type="button"
-            onClick={() => setIsOpen(false)} 
-            className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title="Cerrar"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="flex items-center gap-2 font-bold text-sm text-slate-100 mb-2 border-b border-slate-800 pb-2">
+          <Info className="w-4 h-4 text-primary shrink-0" />
+          <span>{title || "Información"}</span>
         </div>
 
         <p className="text-xs text-slate-300 leading-relaxed font-normal">{text}</p>
-
-        <div className="mt-5 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-colors"
-          >
-            Entendido
-          </button>
-        </div>
+        <p className="text-[10px] text-slate-500 mt-3 text-right italic font-medium">Toca o haz clic fuera para cerrar</p>
       </div>
     </div>
   ) : null
@@ -77,6 +56,7 @@ export default function HelpTooltip({ text, title, inverted = false, className =
         type="button"
         onClick={toggleModal}
         onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
         className={`inline-flex items-center justify-center p-1 rounded-full transition-all outline-none cursor-pointer active:scale-95 ${buttonStyle} ${className}`}
         aria-label="Ayuda"
         title="Ver información"
