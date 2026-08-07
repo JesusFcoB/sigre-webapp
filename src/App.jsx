@@ -122,6 +122,9 @@ function App() {
   if (role === 'profesor') {
     navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Mis Vales' })
   }
+  if (role === 'capturista') {
+    navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Vales' })
+  }
   if (role === 'director') {
     navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Vales' })
     navItems.push({ id: 'conciliation', icon: <FileSpreadsheet className="w-5 h-5" />, label: 'Conciliación' })
@@ -300,6 +303,14 @@ function App() {
             <NavItem 
               icon={<FileSignature className="w-5 h-5" />} 
               label="Mis Vales" 
+              isActive={activeTab === 'vales'} 
+              onClick={() => setActiveTab('vales')} 
+            />
+          )}
+          {role === 'capturista' && (
+            <NavItem 
+              icon={<FileSignature className="w-5 h-5" />} 
+              label="Vales" 
               isActive={activeTab === 'vales'} 
               onClick={() => setActiveTab('vales')} 
             />
