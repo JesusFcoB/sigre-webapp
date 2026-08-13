@@ -68,14 +68,17 @@ export default function AssetRegistrationView() {
     try {
       const serialNumber = formData.serial_number?.trim();
       
-      // Duplicate check
+      // Duplicate check & Merge Logic
+      let existingToMerge = null;
       if (serialNumber) {
-        const existing = await db.items.filter(i => 
+        existingToMerge = await db.items.filter(i => 
           i.serial_number === serialNumber && 
           i.condition === formData.condition
         ).first();
-        if (existing && existing.id !== editingId) {
-          setErrorMsg("Ya existe un bien con este código/serie y misma condición. Edita el registro para sumar cantidad.");
+        
+        // Si estamos editando y detecta otro ID con la misma serie/condición, mejor no permitirlo para evitar choques
+        if (editingId && existingToMerge && existingToMerge.id !== editingId) {
+          setErrorMsg("Ya existe otro registro con esta misma serie y condición.");
           return;
         }
       }
@@ -92,19 +95,29 @@ export default function AssetRegistrationView() {
           last_maintenance_date: formData.last_maintenance_date || null
         });
       } else {
-        const newItem = {
-          id: crypto.randomUUID(),
-          description: formData.description,
-          condition: formData.condition,
-          location_id: formData.location_id,
-          serial_number: serialNumber || null,
-          photoBase64: formData.photoBase64 || null,
-          sync_status: 'pending_create',
-          quantity: Number(formData.quantity) || 1,
-          maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0,
-          last_maintenance_date: formData.last_maintenance_date || null
-        };
-        await db.items.add(newItem);
+        // Si no estamos editando y existe uno igual, SUMAMOS la cantidad (MERGE)
+        if (existingToMerge) {
+          const newQuantity = (Number(existingToMerge.quantity) || 1) + (Number(formData.quantity) || 1);
+          await db.items.update(existingToMerge.id, {
+            quantity: newQuantity,
+            // Opcionalmente podríamos actualizar otros campos como la foto o la fecha
+            photoBase64: formData.photoBase64 || existingToMerge.photoBase64
+          });
+        } else {
+          const newItem = {
+            id: crypto.randomUUID(),
+            description: formData.description,
+            condition: formData.condition,
+            location_id: formData.location_id,
+            serial_number: serialNumber || null,
+            photoBase64: formData.photoBase64 || null,
+            sync_status: 'pending_create',
+            quantity: Number(formData.quantity) || 1,
+            maintenance_frequency_months: Number(formData.maintenance_frequency_months) || 0,
+            last_maintenance_date: formData.last_maintenance_date || null
+          };
+          await db.items.add(newItem);
+        }
       }
 
       setSubmitted(true);
