@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import HelpTooltip from '@/components/ui/HelpTooltip';
 import { useStore } from '../../store/useStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,6 +106,10 @@ const UserManagementView = () => {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Users className="w-6 h-6 text-primary" />
           Gestión de Usuarios
+          <HelpTooltip 
+            title="Gestión de Cuentas y Accesos" 
+            text="Administra las cuentas de acceso al sistema (Directores, Capturistas y Profesores). Permite crear nuevos usuarios, restablecer contraseñas y definir permisos." 
+          />
         </h1>
         <p className="text-muted-foreground text-sm">
           Administra los accesos al sistema SIGRE.

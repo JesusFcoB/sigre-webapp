@@ -84,18 +84,25 @@ function App() {
     seedLocations();
   }, []);
 
+  // Redirect non-directors away from dashboard if active
+  useEffect(() => {
+    if (user && role !== 'director' && activeTab === 'dashboard') {
+      setActiveTab('assets')
+    }
+  }, [user, role, activeTab])
+
   const renderView = () => {
     switch (activeTab) {
-      case 'dashboard': return <DashboardView navigateTo={setActiveTab} />
+      case 'dashboard': return role === 'director' ? <DashboardView navigateTo={setActiveTab} /> : <AssetsView />
       case 'assets': return <AssetsView />
       case 'scanner': return <ScannerView navigateTo={setActiveTab} />
       case 'report': return <ReportView />
       case 'vales': return <ValesView />
-      case 'conciliation': return <ConciliationView />
+      case 'conciliation': return role === 'director' ? <ConciliationView /> : <AssetsView />
       case 'classroom_inventory': return <ClassroomInventoryView navigateTo={setActiveTab} />
-      case 'locations': return <LocationsView navigateTo={setActiveTab} />
-      case 'users': return role === 'director' ? <UserManagementView /> : <DashboardView />
-      default: return <DashboardView />
+      case 'locations': return role === 'director' ? <LocationsView navigateTo={setActiveTab} /> : <AssetsView />
+      case 'users': return role === 'director' ? <UserManagementView /> : <AssetsView />
+      default: return role === 'director' ? <DashboardView /> : <AssetsView />
     }
   }
 
@@ -105,12 +112,19 @@ function App() {
 
   // Build sidebar nav items based on role
   const navItems = []
-  if (role !== 'profesor') {
+  if (role === 'director') {
     navItems.push({ id: 'dashboard', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' })
-    navItems.push({ id: 'assets', icon: <Package className="w-5 h-5" />, label: 'Bienes' })
   }
+  navItems.push({ id: 'assets', icon: <Package className="w-5 h-5" />, label: 'Bienes' })
   navItems.push({ id: 'scanner', icon: <QrCode className="w-5 h-5" />, label: 'Escáner QR' })
   navItems.push({ id: 'report', icon: <AlertCircle className="w-5 h-5" />, label: 'Reportar' })
+  
+  if (role === 'profesor') {
+    navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Mis Vales' })
+  }
+  if (role === 'capturista') {
+    navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Vales' })
+  }
   if (role === 'director') {
     navItems.push({ id: 'vales', icon: <FileSignature className="w-5 h-5" />, label: 'Vales' })
     navItems.push({ id: 'conciliation', icon: <FileSpreadsheet className="w-5 h-5" />, label: 'Conciliación' })
@@ -122,32 +136,53 @@ function App() {
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       
       {/* Header */}
-      <header className="flex justify-between items-center px-4 py-3 bg-card border-b shadow-sm z-40 relative">
-        <h1 
-          className="text-xl font-bold text-primary tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
-          onClick={() => setActiveTab('dashboard')}
-          title="Ir al inicio"
-        >
-          SIGRE
-        </h1>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border text-xs font-medium">
+      <header className="flex justify-between items-center px-3.5 py-2.5 bg-card/90 backdrop-blur-md border-b shadow-2xs z-40 relative sticky top-0">
+        <div className="flex items-center gap-2">
+          <h1 
+            className="text-lg sm:text-xl font-black text-primary tracking-tight cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1.5"
+            onClick={() => setActiveTab(role === 'director' ? 'dashboard' : 'assets')}
+            title="Ir a inicio"
+          >
+            <span className="bg-primary text-primary-foreground text-[10px] font-extrabold px-1.5 py-0.5 rounded-lg shadow-2xs">PWA</span>
+            SIGRE
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-muted/60 border text-xs font-semibold">
             {isSyncing ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" />
             ) : isOnline ? (
-              <Cloud className="w-3.5 h-3.5 text-green-500" />
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
             ) : (
               <CloudOff className="w-3.5 h-3.5 text-red-500" />
             )}
             <span className="text-muted-foreground">{syncStatusMsg}</span>
           </div>
 
-          <div className="flex items-center gap-3 border-l pl-4">
-            <span className="text-sm text-muted-foreground hidden md:inline-block font-medium">
-              {user.user_metadata?.name || user.email} <span className="opacity-70">({role})</span>
-            </span>
-            <Button variant="ghost" size="icon" onClick={() => signOut()} title="Cerrar Sesión" className="text-muted-foreground hover:text-destructive">
-              <LogOut className="w-5 h-5" />
+          <div className="flex items-center gap-2 sm:gap-2.5 border-l pl-2.5 sm:pl-3.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-primary to-blue-600 text-white flex items-center justify-center font-extrabold text-xs shadow-xs ring-2 ring-background shrink-0">
+                {(user.user_metadata?.name || user.email || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-xs font-bold text-foreground max-w-[90px] sm:max-w-[140px] truncate leading-tight">
+                  {user.user_metadata?.name || user.email?.split('@')[0]}
+                </span>
+                <span className={`text-[9px] sm:text-[10px] font-extrabold capitalize px-1.5 py-0.2 rounded-full border w-fit mt-0.5 ${
+                  role === 'director' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300 dark:border-amber-800' :
+                  role === 'capturista' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800' :
+                  'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                }`}>
+                  {role}
+                </span>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => signOut()} title="Cerrar Sesión" className="h-8 w-8 text-muted-foreground hover:text-destructive rounded-full hover:bg-destructive/10 shrink-0">
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -234,10 +269,10 @@ function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation - max 5 items */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-50 px-2 pb-safe md:hidden">
+      {/* Mobile Bottom Navigation - 5 items */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-50 px-1 pb-safe md:hidden">
         <div className="max-w-5xl mx-auto flex justify-around items-center h-16">
-          {role !== 'profesor' && (
+          {role === 'director' && (
             <NavItem 
               icon={<LayoutDashboard className="w-5 h-5" />} 
               label="Inicio" 
@@ -245,14 +280,12 @@ function App() {
               onClick={() => setActiveTab('dashboard')} 
             />
           )}
-          {role !== 'profesor' && (
-            <NavItem 
-              icon={<Package className="w-5 h-5" />} 
-              label="Bienes" 
-              isActive={activeTab === 'assets'} 
-              onClick={() => setActiveTab('assets')} 
-            />
-          )}
+          <NavItem 
+            icon={<Package className="w-5 h-5" />} 
+            label="Bienes" 
+            isActive={activeTab === 'assets'} 
+            onClick={() => setActiveTab('assets')} 
+          />
           <NavItem 
             icon={<QrCode className="w-6 h-6" />} 
             label="Escáner" 
@@ -270,6 +303,14 @@ function App() {
             <NavItem 
               icon={<FileSignature className="w-5 h-5" />} 
               label="Mis Vales" 
+              isActive={activeTab === 'vales'} 
+              onClick={() => setActiveTab('vales')} 
+            />
+          )}
+          {role === 'capturista' && (
+            <NavItem 
+              icon={<FileSignature className="w-5 h-5" />} 
+              label="Vales" 
               isActive={activeTab === 'vales'} 
               onClick={() => setActiveTab('vales')} 
             />

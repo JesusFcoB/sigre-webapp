@@ -83,9 +83,12 @@ export default function ClassroomInventoryView({ navigateTo }) {
         </div>
 
         {items.length === 0 ? (
-          <div className="bg-muted/30 border-2 border-dashed rounded-2xl p-8 flex flex-col items-center text-center gap-3">
-            <Box className="w-12 h-12 text-muted-foreground/50" />
-            <p className="text-muted-foreground font-medium">No se encontraron bienes asignados a este espacio.</p>
+          <div className="bg-muted/20 border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
+              <Box className="w-8 h-8 opacity-80" />
+            </div>
+            <h3 className="font-bold text-lg text-foreground mb-1">Sin bienes asignados</h3>
+            <p className="text-xs text-muted-foreground max-w-xs font-medium">No se han vinculado bienes muebles a este salón o espacio aún.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">

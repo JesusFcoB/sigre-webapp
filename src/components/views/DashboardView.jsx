@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { Wifi, WifiOff, Box, AlertTriangle, CheckCircle2, List, Edit2, Trash2, Moon, Sun, HelpCircle } from "lucide-react"
 
+import HelpTooltip from '@/components/ui/HelpTooltip'
+
 export default function DashboardView({ navigateTo }) {
   const isOnline = useStore((state) => state.isOnline)
   const setOnlineStatus = useStore((state) => state.setOnlineStatus)
@@ -77,7 +79,14 @@ export default function DashboardView({ navigateTo }) {
       <div className="flex flex-col gap-4 bg-primary text-primary-foreground p-6 rounded-b-3xl shadow-md -mx-4 -mt-4 md:rounded-2xl md:mx-0 md:mt-0">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">SIGRE</h1>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              SIGRE
+              <HelpTooltip 
+                inverted={true}
+                title="Panel Principal de Control" 
+                text="Vista ejecutiva del inventario escolar. Visualiza métricas generales, estado físico del equipo registrado y la bitácora local de registros en tiempo real." 
+              />
+            </h1>
             <p className="text-primary-foreground/80 text-sm font-medium">Panel Directivo</p>
           </div>
           <div className="flex items-center gap-2">
@@ -109,74 +118,102 @@ export default function DashboardView({ navigateTo }) {
           
           {/* Metrics Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <Card className="border-l-4 border-l-blue-500 shadow-sm">
+            <Card className="border-l-4 border-l-blue-500 shadow-2xs hover:shadow-md hover:-translate-y-1 transition-all duration-200">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total de Bienes</CardTitle>
-                <Box className="w-4 h-4 text-blue-500" />
+                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-500">
+                  <Box className="w-4 h-4" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{totalItemsCount}</div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <div className="text-3xl font-black text-foreground tracking-tight">{totalItemsCount}</div>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">
                   {pendingItemsCount > 0 ? (
-                    <span className="text-warning-foreground font-semibold">({pendingItemsCount} sin sincronizar)</span>
-                  ) : "Sincronizado"}
+                    <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping inline-block" />
+                      {pendingItemsCount} sin sincronizar
+                    </span>
+                  ) : (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Todo sincronizado</span>
+                  )}
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-red-500 shadow-sm bg-red-50/50 dark:bg-red-950/20">
+            <Card className="border-l-4 border-l-red-500 shadow-2xs bg-red-50/40 dark:bg-red-950/20 hover:shadow-md hover:-translate-y-1 transition-all duration-200">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium text-red-600 dark:text-red-400">Incidencias Pendientes</CardTitle>
-                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/40 text-red-500">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-red-600 dark:text-red-400">{totalTicketsCount}</div>
-                <p className="text-xs text-red-500/80 mt-1 font-medium">
+                <div className="text-3xl font-black text-red-600 dark:text-red-400 tracking-tight">{totalTicketsCount}</div>
+                <p className="text-xs text-red-500/90 mt-1 font-semibold">
                   {pendingTicketsCount > 0 ? `${pendingTicketsCount} pendientes de envío` : "Todos enviados a la nube"}
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-green-500 shadow-sm relative group">
+            <Card className="border-l-4 border-l-emerald-500 shadow-2xs hover:shadow-md hover:-translate-y-1 transition-all duration-200">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                   Tasa de Conciliación
-                  <span className="relative">
-                    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/50 cursor-help" />
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-foreground text-background text-[11px] leading-relaxed rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                      Porcentaje de bienes sincronizados con la nube respecto al total registrado. 100% = todo está respaldado.
-                    </span>
-                  </span>
+                  <HelpTooltip 
+                    title="Tasa de Sincronización" 
+                    text="Porcentaje de bienes sincronizados con la nube respecto al total registrado. 100% indica que todo tu inventario está respaldado." 
+                  />
                 </CardTitle>
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className={`text-3xl font-bold ${conciliationRate >= 80 ? 'text-green-600 dark:text-green-400' : conciliationRate >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>{conciliationRate}%</div>
-                <p className="text-xs text-muted-foreground mt-1">{syncedItemsCount} de {totalItemsCount} bienes sincronizados</p>
+                <div className={`text-3xl font-black tracking-tight ${conciliationRate >= 80 ? 'text-emerald-600 dark:text-emerald-400' : conciliationRate >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{conciliationRate}%</div>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">{syncedItemsCount} de {totalItemsCount} bienes sincronizados</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Chart */}
-          <Card className="shadow-sm">
+          <Card className="shadow-2xs border-t-2 border-t-primary/30">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Estado Físico del Inventario</CardTitle>
+              <CardTitle className="text-base font-bold">Estado Físico del Inventario</CardTitle>
               <CardDescription className="text-xs">Distribución por condición actual.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[200px] w-full mt-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="barGradNuevo" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.8} />
+                      </linearGradient>
+                      <linearGradient id="barGradBueno" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#047857" stopOpacity={0.8} />
+                      </linearGradient>
+                      <linearGradient id="barGradRegular" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f59e0b" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#b45309" stopOpacity={0.8} />
+                      </linearGradient>
+                      <linearGradient id="barGradMalo" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#b91c1c" stopOpacity={0.8} />
+                      </linearGradient>
+                    </defs>
                     <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
                     <YAxis fontSize={11} tickLine={false} axisLine={false} />
                     <Tooltip 
                       cursor={{fill: 'transparent'}}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: theme === 'dark' ? '#1e293b' : '#fff', color: theme === 'dark' ? '#fff' : '#000' }}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', backgroundColor: theme === 'dark' ? '#0f172a' : '#fff', color: theme === 'dark' ? '#f8fafc' : '#0f172a' }}
                     />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={36}>
-                      {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={36}>
+                      {data.map((entry, index) => {
+                        const gradId = entry.name === 'Nuevo' ? 'url(#barGradNuevo)' : entry.name === 'Bueno' ? 'url(#barGradBueno)' : entry.name === 'Regular' ? 'url(#barGradRegular)' : 'url(#barGradMalo)';
+                        return <Cell key={`cell-${index}`} fill={gradId} />;
+                      })}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>

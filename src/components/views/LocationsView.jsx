@@ -1,12 +1,15 @@
 import React, { useState, useRef } from 'react'
+import HelpTooltip from '@/components/ui/HelpTooltip'
 import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useStore } from '@/store/useStore'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, School, User, PlusCircle, Trash2, Edit2, Save, X, AlertCircle, QrCode, Download, Check } from "lucide-react"
+import { ArrowLeft, School, User, PlusCircle, Trash2, Edit2, Save, X, AlertCircle, QrCode, Download, Check, HelpCircle } from "lucide-react"
 import { QRCodeCanvas } from 'qrcode.react'
+
+import { getUsersList } from '@/lib/auth'
 
 export default function LocationsView({ navigateTo }) {
   const [formData, setFormData] = useState({
@@ -16,9 +19,24 @@ export default function LocationsView({ navigateTo }) {
   const [editingId, setEditingId] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [qrLocation, setQrLocation] = useState(null);
+  const [registeredUsers, setRegisteredUsers] = useState([]);
 
   const locations = useLiveQuery(() => db.locations.toArray()) || [];
   const role = useStore((state) => state.role);
+
+  React.useEffect(() => {
+    async function loadUsers() {
+      try {
+        const uList = await getUsersList();
+        if (uList && Array.isArray(uList)) {
+          setRegisteredUsers(uList);
+        }
+      } catch (err) {
+        console.error("Error cargando usuarios para aulas", err);
+      }
+    }
+    loadUsers();
+  }, []);
 
   const downloadQR = (loc) => {
     const canvas = document.getElementById(`qr-canvas-${loc.id}`);
@@ -201,7 +219,13 @@ export default function LocationsView({ navigateTo }) {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Gestión de Aulas</h2>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            Gestión de Aulas
+            <HelpTooltip 
+              title="Gestión de Aulas" 
+              text="Registra las aulas y espacios del plantel con su docente responsable. Genera códigos QR únicos para pegarlos en las puertas y facilitar el escaneo del inventario." 
+            />
+          </h2>
           <p className="text-muted-foreground text-sm">Administra los espacios escolares y sus docentes responsables</p>
         </div>
       </div>
@@ -250,10 +274,18 @@ export default function LocationsView({ navigateTo }) {
                     name="responsible_name"
                     value={formData.responsible_name}
                     onChange={handleInputChange}
-                    placeholder="Ej. Prof. Carlos Gómez"
+                    placeholder="Selecciona o escribe el nombre del docente"
+                    list="teachers-list"
                     required
                     className="pl-10 h-11"
                   />
+                  <datalist id="teachers-list">
+                    {registeredUsers.map(u => (
+                      <option key={u.id} value={u.name || u.username || u.email}>
+                        {u.name ? `${u.name} (${u.role || 'usuario'})` : u.email}
+                      </option>
+                    ))}
+                  </datalist>
                 </div>
               </div>
             </div>

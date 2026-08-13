@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
+import HelpTooltip from '@/components/ui/HelpTooltip'
 import { db } from "@/lib/db"
 import { syncItemsToSupabase } from "@/lib/sync"
 import { useLiveQuery } from "dexie-react-hooks"
@@ -14,7 +15,7 @@ import BarcodeScanner from "@/components/ui/BarcodeScanner"
 import {
   Package, PackagePlus, Search, Filter, X, Edit2, Trash2,
   Camera, ScanBarcode, AlertCircle, CheckCircle2, ChevronDown,
-  FileSpreadsheet, FileText, Info, Layers
+  FileSpreadsheet, FileText, Info, Layers, HelpCircle
 } from "lucide-react"
 import * as XLSX from "xlsx"
 import jsPDF from "jspdf"
@@ -110,7 +111,7 @@ function LocationAutocomplete({ locations, value, onChange }) {
 
   const filtered = useMemo(() => {
     if (!search.trim()) return locations;
-    return locations.filter(l => l.name.toLowerCase().includes(search.toLowerCase()));
+    return locations.filter(l => (l.name || '').toLowerCase().includes(search.toLowerCase()));
   }, [locations, search]);
 
   return (
@@ -121,7 +122,7 @@ function LocationAutocomplete({ locations, value, onChange }) {
           const val = e.target.value;
           setSearch(val);
           setOpen(true);
-          const exact = locations.find(l => l.name.toLowerCase() === val.toLowerCase());
+          const exact = locations.find(l => (l.name || '').toLowerCase() === val.toLowerCase());
           onChange(exact ? exact.id : val);
         }}
         onFocus={() => setOpen(true)}
@@ -217,7 +218,8 @@ export default function AssetsView() {
   const allItems = itemsQuery || []
   const locations = useLiveQuery(() => db.locations.toArray(), []) || []
   const allVales = useLiveQuery(() => db.vales.toArray(), []) || []
-  const role = useStore((state) => state.role);
+  const user = useStore((state) => state.user)
+  const role = (useStore((state) => state.role) || '').toLowerCase()
 
   // Map of item_id -> active vale for loan badge display
   const activeValeMap = useMemo(() => {
@@ -308,12 +310,48 @@ export default function AssetsView() {
     return m
   }, [locations])
 
+  const teacherName = (user?.user_metadata?.name || '').toLowerCase()
+  const teacherEmail = (user?.email || '').toLowerCase()
+  const teacherUsername = (user?.email ? user.email.split('@')[0] : '').toLowerCase()
+
+  // Locations assigned to this teacher
+  const teacherLocations = useMemo(() => {
+    if (role !== 'profesor') return locations;
+    return locations.filter(l => {
+      const resp = (l.responsible_name || '').toLowerCase()
+      if (!resp) return false;
+      return (
+        (teacherName && (resp.includes(teacherName) || teacherName.includes(resp))) ||
+        (teacherEmail && (resp.includes(teacherEmail) || teacherEmail.includes(resp))) ||
+        (teacherUsername && (resp.includes(teacherUsername) || teacherUsername.includes(resp)))
+      )
+    })
+  }, [locations, role, teacherName, teacherEmail, teacherUsername])
+
+  const teacherLocationIds = useMemo(() => {
+    const ids = new Set()
+    teacherLocations.forEach(l => {
+      if (l.id) ids.add(l.id)
+      if (l.name) ids.add(l.name.toLowerCase())
+    })
+    return ids
+  }, [teacherLocations])
+
   const filteredItems = useMemo(() => {
     return allItems.filter(item => {
       if (item.sync_status === 'pending_delete') return false;
       const isDiscarded = item.status === 'discarded'
       if (activeTab === 'active' && isDiscarded) return false
       if (activeTab === 'discarded' && !isDiscarded) return false
+
+      // If professor, strictly restrict to items in their assigned classroom(s)
+      if (role === 'profesor') {
+        if (teacherLocationIds.size === 0) return false;
+        const itemLoc = (item.location_id || '').toLowerCase()
+        const locName = locationMap[item.location_id]?.name?.toLowerCase()
+        const isAssigned = teacherLocationIds.has(item.location_id) || teacherLocationIds.has(itemLoc) || (locName && teacherLocationIds.has(locName))
+        if (!isAssigned) return false;
+      }
 
       const matchSearch = !search || (item.description || '').toLowerCase().includes(search.toLowerCase()) || (item.serial_number || '').toLowerCase().includes(search.toLowerCase())
 
@@ -325,7 +363,7 @@ export default function AssetsView() {
       const matchCategory = !filterCategory || item.category === filterCategory || (!item.category && filterCategory === "Otro")
       return matchSearch && matchLocation && matchCondition && matchCategory
     })
-  }, [allItems, search, filterLocation, filterConditions, filterCategory, activeTab])
+  }, [allItems, search, filterLocation, filterConditions, filterCategory, activeTab, role, teacherLocationIds, locationMap])
 
   const buildDetail = (item) => {
     const sameDesc = allItems.filter(i => i.description?.toLowerCase() === item.description?.toLowerCase())
@@ -575,16 +613,24 @@ export default function AssetsView() {
         <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Package className="w-6 h-6 text-primary" /> Bienes
+            <HelpTooltip 
+              title="Inventario de Bienes" 
+              text="Inventario completo de bienes muebles del plantel. Puedes registrar, editar, filtrar por estado/ubicación y exportar reportes en Excel o PDF." 
+            />
           </h2>
           <p className="text-muted-foreground text-sm mt-0.5">{filteredItems.length} de {allItems.length} registros</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportExcel} title="Exportar Excel">
-            <FileSpreadsheet className="w-4 h-4 text-green-600" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportPDF} title="Exportar PDF">
-            <FileText className="w-4 h-4 text-red-500" />
-          </Button>
+          {role === 'director' && (
+            <>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportExcel} title="Exportar Excel">
+                <FileSpreadsheet className="w-4 h-4 text-green-600" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportPDF} title="Exportar PDF">
+                <FileText className="w-4 h-4 text-red-500" />
+              </Button>
+            </>
+          )}
           <Button onClick={openCreate} className="h-10 rounded-xl font-bold gap-1.5 bg-primary hover:bg-primary/90">
             <PackagePlus className="w-4 h-4" />
             <span className="hidden sm:inline">Nuevo Bien</span>
@@ -646,8 +692,8 @@ export default function AssetsView() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Salón / Responsable</label>
               <Select value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="h-10 rounded-xl">
-                <option value="">Todos los salones</option>
-                {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name} — {loc.responsible_name}</option>)}
+                <option value="">{role === 'profesor' ? 'Tus salones asignados' : 'Todos los salones'}</option>
+                {(role === 'profesor' ? teacherLocations : locations).map(loc => <option key={loc.id} value={loc.id}>{loc.name} — {loc.responsible_name}</option>)}
               </Select>
             </div>
             <div className="space-y-1.5">
@@ -679,10 +725,24 @@ export default function AssetsView() {
 
       {/* Items list */}
       {!isLoadingItems && filteredItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-          <Layers className="w-12 h-12 opacity-30" />
-          <p className="font-medium">No se encontraron bienes</p>
-          <p className="text-xs opacity-60">Ajusta los filtros o registra un nuevo bien</p>
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-muted/20 border border-dashed rounded-3xl text-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
+            <Layers className="w-8 h-8 opacity-80" />
+          </div>
+          <h3 className="font-bold text-lg text-foreground mb-1">
+            {role === 'profesor' && teacherLocations.length === 0 ? "Sin salón asignado" : "No se encontraron bienes"}
+          </h3>
+          <p className="text-xs text-muted-foreground max-w-xs mb-5 font-medium">
+            {role === 'profesor' && teacherLocations.length === 0
+              ? "No tienes un salón vinculado a tu usuario aún. Solicita al Director que asigne tu nombre en la sección de Aulas."
+              : "Ajusta los filtros de búsqueda o registra un nuevo bien mueble en el inventario."}
+          </p>
+          {role !== 'profesor' && (
+            <Button onClick={openCreate} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
+              <PackagePlus className="w-4 h-4 mr-2" />
+              Registrar Primer Bien
+            </Button>
+          )}
         </div>
       ) : (
         <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>

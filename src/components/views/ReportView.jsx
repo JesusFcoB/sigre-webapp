@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import HelpTooltip from '@/components/ui/HelpTooltip'
 import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useStore } from '@/store/useStore'
@@ -10,7 +11,7 @@ import { Select } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Camera, Save, X, Info, AlertCircle, Edit2, Trash2, CheckCircle2, ShieldAlert, FileText, PlusCircle, LayoutList } from "lucide-react"
+import { Camera, Save, X, Info, AlertCircle, Edit2, Trash2, CheckCircle2, ShieldAlert, FileText, PlusCircle, LayoutList, HelpCircle } from "lucide-react"
 
 export default function ReportView() {
   const [activeTab, setActiveTab] = useState('pending');
@@ -27,7 +28,8 @@ export default function ReportView() {
   const [errorMsg, setErrorMsg] = useState('')
   const editingTicket = useStore((state) => state.editingTicket)
   const setEditingTicket = useStore((state) => state.setEditingTicket)
-  const role = useStore((state) => state.role)
+  const role = (useStore((state) => state.role) || '').toLowerCase()
+  const user = useStore((state) => state.user)
 
   const tickets = useLiveQuery(() => db.tickets.toArray()) || []
   const locations = useLiveQuery(() => db.locations.toArray()) || []
@@ -38,9 +40,20 @@ export default function ReportView() {
     return m
   }, [locations])
 
-  // Split tickets by status (default is pending if not set)
-  const pendingTickets = tickets.filter(t => t.status !== 'solved' && t.sync_status !== 'pending_delete')
-  const solvedTickets = tickets.filter(t => t.status === 'solved' && t.sync_status !== 'pending_delete')
+  const userEmail = (user?.email || '').toLowerCase()
+  const userName = (user?.user_metadata?.name || '').toLowerCase()
+
+  // Split tickets by status, filtered by user if profesor
+  const myTickets = useMemo(() => {
+    if (role !== 'profesor') return tickets;
+    return tickets.filter(t => {
+      const rep = (t.reported_by || '').toLowerCase()
+      return rep && (rep === userEmail || rep === userName || userEmail.includes(rep))
+    })
+  }, [tickets, role, userEmail, userName])
+
+  const pendingTickets = myTickets.filter(t => t.status !== 'solved' && t.sync_status !== 'pending_delete')
+  const solvedTickets = myTickets.filter(t => t.status === 'solved' && t.sync_status !== 'pending_delete')
 
   // Set form data if editing
   React.useEffect(() => {
@@ -87,6 +100,7 @@ export default function ReportView() {
         await db.tickets.add({
           ...formData,
           reported_at: new Date().toISOString(),
+          reported_by: user?.email || user?.user_metadata?.name || 'Profesor',
           status: 'pending',
           sync_status: 'pending_create'
         })
@@ -141,6 +155,10 @@ export default function ReportView() {
         <h2 className="text-3xl font-bold flex items-center gap-3 text-foreground tracking-tight">
           <ShieldAlert className="w-8 h-8 text-primary" />
           Reportes de Falla
+          <HelpTooltip 
+            title="Reportes de Incidencias" 
+            text="Registra incidencias de infraestructura escolar (fallas eléctricas, plomería, mobiliario dañado, etc.) con evidencia fotográfica para dar seguimiento a su resolución." 
+          />
         </h2>
         <p className="text-muted-foreground font-medium">Gestiona incidencias e infraestructura.</p>
       </div>
@@ -172,9 +190,16 @@ export default function ReportView() {
         {activeTab === 'pending' && (
           <div className="flex flex-col gap-3">
             {pendingTickets.length === 0 ? (
-              <div className="bg-card border-2 border-dashed rounded-2xl p-8 flex flex-col items-center text-center gap-3">
-                <CheckCircle2 className="w-12 h-12 text-success opacity-50" />
-                <p className="text-muted-foreground font-medium">No hay incidencias pendientes.</p>
+              <div className="bg-muted/20 border-2 border-dashed rounded-3xl p-10 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="font-bold text-lg text-foreground mb-1">¡Sin fallas pendientes!</h3>
+                <p className="text-xs text-muted-foreground max-w-xs mb-5 font-medium">No existen incidencias activas en el plantel en este momento.</p>
+                <Button onClick={() => setDrawerOpen(true)} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  Reportar Falla
+                </Button>
               </div>
             ) : (
               pendingTickets.map((ticket) => (

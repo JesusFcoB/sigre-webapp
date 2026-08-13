@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react'
+import HelpTooltip from '@/components/ui/HelpTooltip'
 import { db } from '@/lib/db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { FileSignature, Plus, X, FileText, CheckCircle2, PenTool, Clock, XCircle, RotateCcw, AlertTriangle, User, Calendar, Package } from 'lucide-react'
+import { FileSignature, Plus, X, FileText, CheckCircle2, PenTool, Clock, XCircle, RotateCcw, AlertTriangle, User, Calendar, Package, HelpCircle } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { syncValesToSupabase } from '@/lib/sync'
@@ -51,7 +52,7 @@ export default function ValesView() {
   
   const valesQuery = useLiveQuery(() => db.vales.toArray()) || []
   const allItems = useLiveQuery(() => db.items.toArray()) || []
-  const items = useMemo(() => allItems.filter(i => i.status !== 'discarded'), [allItems])
+  const items = useMemo(() => allItems.filter(i => i.status !== 'discarded' && i.sync_status !== 'pending_delete'), [allItems])
   const locations = useLiveQuery(() => db.locations.toArray()) || []
 
   const itemMap = useMemo(() => {
@@ -59,6 +60,12 @@ export default function ValesView() {
     allItems.forEach(i => { m[i.id] = i })
     return m
   }, [allItems])
+
+  const locationMap = useMemo(() => {
+    const m = {}
+    locations.forEach(l => { m[l.id] = l })
+    return m
+  }, [locations])
 
   // Filter vales by sync_status (exclude pending_delete) and by role
   const vales = useMemo(() => {
@@ -198,6 +205,12 @@ export default function ValesView() {
         <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <FileSignature className="w-6 h-6 text-primary" /> {role === 'profesor' ? 'Mis Vales' : 'Vales de Resguardo'}
+            <HelpTooltip 
+              title={role === 'profesor' ? 'Solicitudes de Vale' : 'Vales de Resguardo'}
+              text={role === 'profesor'
+                ? 'Solicita préstamos de bienes al Director. Puedes dar seguimiento al estado de tus solicitudes desde aquí.'
+                : 'Administra préstamos de bienes a docentes. Genera vales con firma digital, aprueba solicitudes y controla devoluciones con fechas límite.'}
+            />
           </h2>
           <p className="text-muted-foreground text-sm mt-0.5">
             {role === 'profesor' ? 'Seguimiento de tus solicitudes de préstamo' : 'Control de préstamos de bienes'}
@@ -210,20 +223,22 @@ export default function ValesView() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{pendingVales.length}</p>
-          <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">Por Aprobar</p>
+      {role === 'director' && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
+            <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{pendingVales.length}</p>
+            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">Por Aprobar</p>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+            <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{activeVales.length}</p>
+            <p className="text-[10px] font-bold text-blue-600 dark:text-blue-500 uppercase tracking-wider">Prestados</p>
+          </div>
+          <div className={`rounded-xl p-3 text-center border ${expiredCount > 0 ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'}`}>
+            <p className={`text-2xl font-bold ${expiredCount > 0 ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>{expiredCount}</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider ${expiredCount > 0 ? 'text-red-600 dark:text-red-500' : 'text-green-600 dark:text-green-500'}`}>Vencidos</p>
+          </div>
         </div>
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
-          <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{activeVales.length}</p>
-          <p className="text-[10px] font-bold text-blue-600 dark:text-blue-500 uppercase tracking-wider">Prestados</p>
-        </div>
-        <div className={`rounded-xl p-3 text-center border ${expiredCount > 0 ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'}`}>
-          <p className={`text-2xl font-bold ${expiredCount > 0 ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>{expiredCount}</p>
-          <p className={`text-[10px] font-bold uppercase tracking-wider ${expiredCount > 0 ? 'text-red-600 dark:text-red-500' : 'text-green-600 dark:text-green-500'}`}>Vencidos</p>
-        </div>
-      </div>
+      )}
 
       {/* Tabs */}
       <div className="flex bg-muted p-1 rounded-xl">
@@ -245,11 +260,24 @@ export default function ValesView() {
 
       {/* Vale Cards */}
       {currentVales.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-          <FileSignature className="w-12 h-12 opacity-30" />
-          <p className="font-medium">
-            {activeTab === 'pending' ? 'No hay solicitudes pendientes' : activeTab === 'active' ? 'No hay préstamos activos' : 'Sin historial de vales'}
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-muted/20 border border-dashed rounded-3xl text-center">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
+            <FileSignature className="w-8 h-8 opacity-80" />
+          </div>
+          <h3 className="font-bold text-lg text-foreground mb-1">
+            {activeTab === 'pending' ? 'Sin solicitudes pendientes' : activeTab === 'active' ? 'Sin vales activos' : 'Sin historial de préstamos'}
+          </h3>
+          <p className="text-xs text-muted-foreground max-w-xs mb-5 font-medium">
+            {activeTab === 'pending' 
+              ? 'Todas las solicitudes de préstamo han sido procesadas.' 
+              : activeTab === 'active' 
+              ? 'No hay bienes en resguardo o préstamo temporal en este momento.' 
+              : 'El historial de vales completados o rechazados se mostrará aquí.'}
           </p>
+          <Button onClick={() => setDrawerOpen(true)} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4 mr-2" />
+            {role === 'profesor' ? 'Solicitar Préstamo' : 'Generar Nuevo Vale'}
+          </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -388,11 +416,13 @@ export default function ValesView() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">Bien Asignado *</label>
+                  <label className="text-sm font-bold">Bien Solicitado / Asignado *</label>
                   <Select value={formData.item_id} onChange={e => setFormData(p => ({ ...p, item_id: e.target.value }))} required>
-                    <option value="" disabled>Seleccione un bien...</option>
+                    <option value="" disabled>Seleccione cualquier bien del inventario escolar...</option>
                     {items.map(item => (
-                      <option key={item.id} value={item.id}>{item.description} {item.serial_number ? `(${item.serial_number})` : ''}</option>
+                      <option key={item.id} value={item.id}>
+                        {item.description} — {locationMap[item.location_id]?.name || 'Plantel'} {item.serial_number ? `(${item.serial_number})` : ''}
+                      </option>
                     ))}
                   </Select>
                 </div>
