@@ -70,9 +70,12 @@ export default function AssetRegistrationView() {
       
       // Duplicate check
       if (serialNumber) {
-        const existing = await db.items.filter(i => i.serial_number === serialNumber).first();
+        const existing = await db.items.filter(i => 
+          i.serial_number === serialNumber && 
+          i.condition === formData.condition
+        ).first();
         if (existing && existing.id !== editingId) {
-          setErrorMsg("Ya existe un bien registrado con este número de serie.");
+          setErrorMsg("Ya existe un bien con este código/serie y misma condición. Edita el registro para sumar cantidad.");
           return;
         }
       }

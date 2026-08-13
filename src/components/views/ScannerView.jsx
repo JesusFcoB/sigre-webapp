@@ -26,21 +26,29 @@ export default function ScannerView({ navigateTo }) {
     end_date: '',
     signatureBase64: null
   });
+  const [valeRequestItem, setValeRequestItem] = useState(null);
 
   const locationInfo = useLiveQuery(
     () => scannedData ? db.locations.get(scannedData) : null,
     [scannedData]
   );
 
-  const itemInfo = useLiveQuery(
-    () => scannedData ? db.items.filter(i => i.serial_number === scannedData).first() : null,
+  const itemsInfo = useLiveQuery(
+    () => scannedData ? db.items.filter(i => i.serial_number === scannedData).toArray() : null,
     [scannedData]
   );
+  
+  const hasItems = itemsInfo && itemsInfo.length > 0;
+  const firstItem = hasItems ? itemsInfo[0] : null;
 
-  // Check if item already has an active or pending vale
-  const existingVale = useLiveQuery(
-    () => itemInfo ? db.vales.filter(v => v.item_id === itemInfo.id && (v.vale_status === 'active' || v.vale_status === 'pending_approval')).first() : null,
-    [itemInfo]
+  // Check if items already have an active or pending vale
+  const existingVales = useLiveQuery(
+    () => {
+      if (!hasItems) return [];
+      const itemIds = itemsInfo.map(i => i.id);
+      return db.vales.filter(v => itemIds.includes(v.item_id) && (v.vale_status === 'active' || v.vale_status === 'pending_approval')).toArray();
+    },
+    [itemsInfo]
   );
 
   const handleScan = (data) => {
@@ -51,7 +59,7 @@ export default function ScannerView({ navigateTo }) {
 
   const handleValeRequest = async (e) => {
     e.preventDefault();
-    if (!itemInfo || !user) return;
+    if (!valeRequestItem || !user) return;
 
     try {
       const userName = user.user_metadata?.name || user.email || 'Profesor';
@@ -59,7 +67,7 @@ export default function ScannerView({ navigateTo }) {
         person_name: userName,
         start_date: new Date().toISOString().split('T')[0],
         end_date: valeForm.end_date || null,
-        item_id: itemInfo.id,
+        item_id: valeRequestItem.id,
         signatureBase64: valeForm.signatureBase64 || null,
         vale_status: 'pending_approval',
         requested_by: user.email || userName,
@@ -146,15 +154,15 @@ export default function ScannerView({ navigateTo }) {
           )}
 
           <Card className="w-full border-primary/20 shadow-lg overflow-hidden">
-            <div className={`p-4 text-white flex justify-between items-center ${locationInfo ? 'bg-primary' : itemInfo ? 'bg-indigo-600' : 'bg-slate-600'}`}>
+            <div className={`p-4 text-white flex justify-between items-center ${locationInfo ? 'bg-primary' : hasItems ? 'bg-indigo-600' : 'bg-slate-600'}`}>
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
                 <span className="font-bold text-lg">
-                  {locationInfo ? locationInfo.name : itemInfo ? itemInfo.description : scannedData}
+                  {locationInfo ? locationInfo.name : hasItems ? firstItem.description : scannedData}
                 </span>
               </div>
               <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0">
-                {locationInfo ? 'Aula / Espacio' : itemInfo ? 'Bien / Artículo' : 'Código Leído'}
+                {locationInfo ? 'Aula / Espacio' : hasItems ? 'Bien / Artículo' : 'Código Leído'}
               </Badge>
             </div>
             
@@ -172,33 +180,75 @@ export default function ScannerView({ navigateTo }) {
               </CardContent>
             )}
 
-            {itemInfo && (
-              <CardContent className="p-6">
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm font-medium">Estado:</span>
-                    <Badge>{itemInfo.condition}</Badge>
+            {hasItems && (
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col gap-4">
+                  <div className="flex justify-between items-center pb-2 border-b">
+                    <span className="text-muted-foreground text-sm font-medium">Número de Serie / Código:</span>
+                    <span className="font-bold">{firstItem.serial_number}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground text-sm font-medium">Número de Serie:</span>
-                    <span className="font-bold">{itemInfo.serial_number}</span>
+                  
+                  <div className="space-y-3">
+                    {itemsInfo.map(item => {
+                      const itemVale = existingVales?.find(v => v.item_id === item.id);
+                      return (
+                        <div key={item.id} className="flex flex-col gap-2 p-3 bg-muted/30 rounded-xl border border-border/50">
+                          <div className="flex justify-between items-center">
+                            <Badge className="capitalize">{item.condition}</Badge>
+                            <span className="font-bold text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full">Cant: {item.quantity || 1}</span>
+                          </div>
+                          
+                          {itemVale && (
+                            <div className="mt-1 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-2">
+                              <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                                {itemVale.vale_status === 'active' 
+                                  ? `⚠️ Prestado a: ${itemVale.person_name}` 
+                                  : `⏳ Solicitud pendiente de: ${itemVale.person_name}`}
+                              </p>
+                            </div>
+                          )}
+                          
+                          <div className="flex gap-2 mt-1">
+                            <Button size="sm" variant="secondary" className="flex-1 h-10 text-xs" onClick={() => {
+                              useStore.getState().setEditingItem(item);
+                              navigateTo('assets');
+                            }}>
+                              <FileText className="w-3 h-3 mr-1" /> Editar
+                            </Button>
+                            {!itemVale && !valeSubmitted && (
+                              <Button size="sm" className="flex-1 h-10 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => {
+                                setValeRequestItem(item);
+                                setValeRequestOpen(true);
+                              }}>
+                                <FileSignature className="w-3 h-3 mr-1" /> Vale
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                  {existingVale && (
-                    <div className="mt-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
-                      <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
-                        {existingVale.vale_status === 'active' 
-                          ? `⚠️ Prestado a: ${existingVale.person_name}` 
-                          : `⏳ Solicitud pendiente de: ${existingVale.person_name}`}
-                      </p>
-                    </div>
-                  )}
+                  
+                  <Button variant="outline" className="w-full mt-2 border-dashed" onClick={() => {
+                    useStore.getState().setEditingItem({
+                      description: firstItem.description,
+                      serial_number: firstItem.serial_number,
+                      location_id: firstItem.location_id,
+                      category: firstItem.category,
+                      quantity: 1,
+                      condition: '' // Forzar a elegir nueva condición
+                    });
+                    navigateTo('assets');
+                  }}>
+                    + Registrar en otro estado
+                  </Button>
                 </div>
               </CardContent>
             )}
           </Card>
 
           <div className="flex flex-col gap-4 w-full mt-2">
-            {(locationInfo || (!locationInfo && !itemInfo)) && (
+            {(locationInfo || (!locationInfo && !hasItems)) && (
               <Button 
                 size="lg" 
                 className="h-16 text-xl rounded-2xl shadow-lg w-full bg-blue-600 hover:bg-blue-700"
@@ -209,32 +259,6 @@ export default function ScannerView({ navigateTo }) {
               >
                 <FileText className="mr-3 h-6 w-6" />
                 Ver Inventario de Aula
-              </Button>
-            )}
-
-            {itemInfo && (
-              <Button 
-                size="lg" 
-                className="h-16 text-xl rounded-2xl shadow-lg w-full bg-indigo-600 hover:bg-indigo-700"
-                onClick={() => {
-                  useStore.getState().setEditingItem(itemInfo);
-                  navigateTo('assets');
-                }}
-              >
-                <FileText className="mr-3 h-6 w-6" />
-                Ver Detalles del Bien
-              </Button>
-            )}
-
-            {/* Vale Request Button — visible for ALL roles including professors */}
-            {itemInfo && !existingVale && !valeSubmitted && (
-              <Button 
-                size="lg" 
-                className="h-16 text-xl rounded-2xl shadow-lg w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => setValeRequestOpen(true)}
-              >
-                <FileSignature className="mr-3 h-6 w-6" />
-                Solicitar Préstamo
               </Button>
             )}
             
@@ -259,7 +283,7 @@ export default function ScannerView({ navigateTo }) {
       )}
 
       {/* Vale Request Modal */}
-      {valeRequestOpen && itemInfo && (
+      {valeRequestOpen && valeRequestItem && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setValeRequestOpen(false)} />
           <div className="relative w-full max-w-md bg-card rounded-3xl shadow-2xl z-10 animate-in zoom-in-95 duration-200">
@@ -274,8 +298,8 @@ export default function ScannerView({ navigateTo }) {
 
               {/* Item preview */}
               <div className="bg-muted/50 border rounded-xl p-3 mb-4">
-                <p className="font-bold text-sm">{itemInfo.description}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Serie: {itemInfo.serial_number || 'N/A'} • Estado: {itemInfo.condition}</p>
+                <p className="font-bold text-sm">{valeRequestItem.description}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Serie: {valeRequestItem.serial_number || 'N/A'} • Estado: {valeRequestItem.condition}</p>
               </div>
 
               <form onSubmit={handleValeRequest} className="space-y-4">
