@@ -124,9 +124,9 @@ export default function LocationsView({ navigateTo }) {
     setErrorMsg("");
 
     const name = formData.name.trim();
-    const responsible_name = formData.responsible_name.trim();
+    const inputResponsible = formData.responsible_name.trim();
 
-    if (!name || !responsible_name) {
+    if (!name || !inputResponsible) {
       setErrorMsg("Todos los campos son obligatorios.");
       return;
     }
@@ -134,12 +134,28 @@ export default function LocationsView({ navigateTo }) {
     // Auto-generar id a partir de nombre (slug)
     const generatedId = editingId || name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/(^_+|_-+$)/g, '');
 
+    // Resolve structured responsible_name
+    let finalResponsibleName = inputResponsible;
+    const matchedUser = registeredUsers.find(u => 
+      (u.name && u.name.trim().toLowerCase() === inputResponsible.toLowerCase()) ||
+      (u.email && u.email.trim().toLowerCase() === inputResponsible.toLowerCase()) ||
+      (u.username && u.username.trim().toLowerCase() === inputResponsible.toLowerCase()) ||
+      (u.name && `${u.name.trim().toLowerCase()} (${u.email.trim().toLowerCase()})` === inputResponsible.toLowerCase())
+    );
+
+    if (matchedUser) {
+      finalResponsibleName = matchedUser.name 
+        ? `${matchedUser.name} (${matchedUser.email})` 
+        : matchedUser.email;
+    }
+
     try {
       if (editingId) {
         // Modo Edición
         await db.locations.update(editingId, {
           name,
-          responsible_name
+          responsible_name: finalResponsibleName,
+          sync_status: 'pending_update'
         });
         setEditingId(null);
       } else {
@@ -153,11 +169,15 @@ export default function LocationsView({ navigateTo }) {
         await db.locations.add({
           id: generatedId,
           name,
-          responsible_name
+          responsible_name: finalResponsibleName,
+          sync_status: 'pending_create'
         });
       }
 
       setFormData({ name: '', responsible_name: '' });
+      if (navigator.onLine) {
+        import('@/lib/sync').then(s => s.syncAll());
+      }
     } catch (error) {
       console.error("Error guardando ubicación:", error);
       setErrorMsg("Ocurrió un error al guardar la ubicación.");
