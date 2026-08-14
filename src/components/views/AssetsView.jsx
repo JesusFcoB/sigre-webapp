@@ -451,7 +451,8 @@ export default function AssetsView() {
     
     const year = new Date().getFullYear();
     const prefix = `SIGRE-${year}-`;
-    let serial = formData.serial_number?.trim()
+    const userEnteredSerial = formData.serial_number?.trim();
+    let serial = userEnteredSerial;
     
     if (!serial) {
       serial = generateFolio(prefix, 0);
@@ -464,8 +465,8 @@ export default function AssetsView() {
     try {
       if (editingId) {
         const firstRow = formData.breakdown[0] || { condition: "nuevo", quantity: formData.quantity };
-        let currentSerial = formData.serial_number;
-        if (!currentSerial || !currentSerial.startsWith(`${prefix}-`)) {
+        let currentSerial = userEnteredSerial;
+        if (!currentSerial) {
           currentSerial = generateFolio(prefix, 0);
         }
 
@@ -483,9 +484,10 @@ export default function AssetsView() {
           sync_status: 'pending_update'
         });
 
+        const basePrefix = currentSerial;
         for (let i = 1; i < formData.breakdown.length; i++) {
           const row = formData.breakdown[i];
-          const folio = generateFolio(prefix, i);
+          const folio = generateFolio(basePrefix, i);
           await db.items.add({
             id: crypto.randomUUID(),
             description: formData.description,
@@ -502,23 +504,44 @@ export default function AssetsView() {
           });
         }
       } else {
-        for (let i = 0; i < formData.breakdown.length; i++) {
-          const row = formData.breakdown[i];
-          const folio = generateFolio(prefix, i);
+        const firstRow = formData.breakdown[0] || { condition: "nuevo", quantity: formData.quantity };
+        const isSingleItem = formData.breakdown.length === 1 && (Number(firstRow.quantity) || 1) === 1;
+
+        if (isSingleItem && userEnteredSerial) {
           await db.items.add({
             id: crypto.randomUUID(),
             description: formData.description,
-            condition: row.condition,
+            condition: firstRow.condition,
             location_id: formData.location_id,
             category: formData.category || null,
-            serial_number: folio,
+            serial_number: userEnteredSerial,
             photoBase64: formData.photoBase64 || null,
             invoiceBase64: formData.invoiceBase64 || null,
             sync_status: "pending_create",
-            quantity: Number(row.quantity) || 1,
+            quantity: 1,
             maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
             last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null
           });
+        } else {
+          const basePrefix = userEnteredSerial || prefix;
+          for (let i = 0; i < formData.breakdown.length; i++) {
+            const row = formData.breakdown[i];
+            const folio = generateFolio(basePrefix, i);
+            await db.items.add({
+              id: crypto.randomUUID(),
+              description: formData.description,
+              condition: row.condition,
+              location_id: formData.location_id,
+              category: formData.category || null,
+              serial_number: folio,
+              photoBase64: formData.photoBase64 || null,
+              invoiceBase64: formData.invoiceBase64 || null,
+              sync_status: "pending_create",
+              quantity: Number(row.quantity) || 1,
+              maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
+              last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null
+            });
+          }
         }
       }
 
@@ -603,7 +626,7 @@ export default function AssetsView() {
 
       {isScanning && (
         <BarcodeScanner
-          onScan={(data) => { setFormData(p => ({ ...p, serial_prefix: data.toUpperCase(), prefix_edited: true })); setIsScanning(false) }}
+          onScan={(data) => { setFormData(p => ({ ...p, serial_number: data.toUpperCase(), serial_prefix: data.toUpperCase(), prefix_edited: true })); setIsScanning(false) }}
           onClose={() => setIsScanning(false)}
         />
       )}
@@ -1085,7 +1108,7 @@ export default function AssetsView() {
                     <Button type="button" variant="outline" className="h-12 w-12 px-0 shrink-0" onClick={() => setIsScanning(true)}><ScanBarcode className="w-5 h-5 text-muted-foreground" /></Button>
                   </div>
                   <p className="text-xs text-muted-foreground italic">
-                    Los folios se generarán automáticamente al guardar (Ej. {formData.serial_prefix || "PRE"}-DDMMYY-001)
+                    Los folios se generarán automáticamente al guardar (Ej. {formData.serial_number || `SIGRE-${new Date().getFullYear()}-`}0001)
                   </p>
                 </div>
 
