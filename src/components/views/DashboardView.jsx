@@ -20,16 +20,16 @@ export default function DashboardView({ navigateTo }) {
   const toggleTheme = useStore((state) => state.toggleTheme)
   const role = (useStore((state) => state.role) || '').toLowerCase()
 
-  const totalItemsCount = useLiveQuery(() => db.items.count()) || 0;
-  const pendingItemsCount = useLiveQuery(() => db.items.where('sync_status').equals('pending_create').count()) || 0;
-  const totalTicketsCount = useLiveQuery(() => db.tickets.count()) || 0;
-  const pendingTicketsCount = useLiveQuery(() => db.tickets.where('sync_status').equals('pending').count()) || 0;
-
-  const syncedItemsCount = useLiveQuery(() => db.items.where('sync_status').equals('synced').count()) || 0;
-  const conciliationRate = totalItemsCount > 0 ? Math.round((syncedItemsCount / totalItemsCount) * 100) : 0;
-
   const allItems = useLiveQuery(() => db.items.orderBy('id').reverse().toArray()) || [];
   const allTickets = useLiveQuery(() => db.tickets.orderBy('id').reverse().toArray()) || [];
+
+  const totalItemsCount = allItems.length;
+  const pendingItemsCount = allItems.filter(i => !i.sync_status || i.sync_status !== 'synced').length;
+  const totalPendingTicketsCount = allTickets.filter(t => t.status !== 'solved' && t.sync_status !== 'pending_delete').length;
+  const pendingTicketsCount = allTickets.filter(t => !t.sync_status || t.sync_status !== 'synced').length;
+
+  const syncedItemsCount = allItems.filter(i => i.sync_status === 'synced').length;
+  const conciliationRate = totalItemsCount > 0 ? Math.round((syncedItemsCount / totalItemsCount) * 100) : 0;
 
   const data = [
     { name: 'Nuevos', value: allItems.filter(i => (i.condition || '').toLowerCase() === 'nuevo').length, color: '#3b82f6' },
@@ -148,7 +148,7 @@ export default function DashboardView({ navigateTo }) {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-black text-red-600 dark:text-red-400 tracking-tight">{totalTicketsCount}</div>
+                <div className="text-3xl font-black text-red-600 dark:text-red-400 tracking-tight">{totalPendingTicketsCount}</div>
                 <p className="text-xs text-red-500/90 mt-1 font-semibold">
                   {pendingTicketsCount > 0 ? `${pendingTicketsCount} pendientes de envío` : "Todos enviados a la nube"}
                 </p>
