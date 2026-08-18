@@ -20,6 +20,13 @@ import {
 import * as XLSX from "xlsx"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import {
+  getArticleCatalog,
+  addArticleToCatalog,
+  RESOURCE_TYPES,
+  ORIGIN_PROVIDERS,
+  DEFAULT_CATEGORIES
+} from "@/lib/catalog"
 
 // ─── Constants ────────────────────────────────────────────────
 const CONDITIONS = [
@@ -28,7 +35,7 @@ const CONDITIONS = [
   { value: "regular", label: "Regular", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" },
   { value: "malo", label: "Malo", color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
 ]
-const CATEGORIES = ["Mobiliario", "Electrónico", "Didáctico", "Otro"]
+const CATEGORIES = DEFAULT_CATEGORIES
 
 const conditionMeta = (val) => CONDITIONS.find(c => c.value === val) || { label: val || "—", color: "bg-gray-100 text-gray-600" }
 
@@ -40,6 +47,104 @@ function generateAutoPrefix(name) {
     return words.slice(0, 4).map(w => w[0]).join("").toUpperCase() || "BN";
   }
   return cleaned.substring(0, 3).toUpperCase() || "BN";
+}
+
+function ArticleAutocomplete({ value, onChange, onSelectArticle, catalog }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value || "");
+
+  useEffect(() => {
+    setSearch(value || "");
+  }, [value]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return catalog.slice(0, 15);
+    const query = search.toLowerCase();
+    return catalog.filter(a => 
+      a.name.toLowerCase().includes(query) || 
+      (a.category && a.category.toLowerCase().includes(query))
+    );
+  }, [catalog, search]);
+
+  const exactMatch = useMemo(() => {
+    return catalog.some(a => a.name.toLowerCase() === search.trim().toLowerCase());
+  }, [catalog, search]);
+
+  const handleSelect = (art) => {
+    setSearch(art.name);
+    onChange(art.name);
+    if (onSelectArticle) onSelectArticle(art);
+    setOpen(false);
+  };
+
+  const handleAddNew = () => {
+    const clean = search.trim();
+    if (!clean) return;
+    const newArt = addArticleToCatalog(clean);
+    setSearch(clean);
+    onChange(clean);
+    if (onSelectArticle) onSelectArticle(newArt);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <Input
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        placeholder="Buscar o escribir nombre del artículo (ej. Minisplit, Mesabanco)..."
+        required
+        className="h-12 w-full rounded-xl pr-9 font-medium"
+      />
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 pointer-events-none">
+        <Package className="w-4 h-4" />
+      </span>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto bg-popover text-popover-foreground rounded-2xl border shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in-50 duration-150">
+          {filtered.map((art) => (
+            <div
+              key={art.name}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(art);
+              }}
+              className={`px-3 py-2 text-sm rounded-xl cursor-pointer transition-colors flex items-center justify-between ${
+                value === art.name ? "bg-primary text-primary-foreground font-bold" : "hover:bg-muted font-medium"
+              }`}
+            >
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold">{art.name}</span>
+                <span className={`text-[10px] ${value === art.name ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  📁 {art.category} {art.resource_type === 'consumable' ? '• 🏷️ Consumible' : '• 🏢 Activo Fijo'}
+                </span>
+              </div>
+              {value === art.name && <CheckCircle2 className="w-4 h-4 shrink-0" />}
+            </div>
+          ))}
+
+          {search.trim() && !exactMatch && (
+            <div
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleAddNew();
+              }}
+              className="px-3 py-2.5 text-xs font-bold rounded-xl cursor-pointer bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-2 border border-primary/20 mt-1"
+            >
+              <PackagePlus className="w-4 h-4 shrink-0" />
+              <span>+ Agregar "<strong>{search.trim()}</strong>" al Catálogo Maestro</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CategoryAutocomplete({ value, onChange, categories }) {
@@ -157,10 +262,14 @@ function LocationAutocomplete({ locations, value, onChange }) {
 
 function emptyForm() {
   return {
+    article_name: "",
     description: "",
     condition: "nuevo",
     location_id: "",
     category: "",
+    resource_type: "fixed",
+    origin_provider: "",
+    acquisition_date: new Date().toISOString().split('T')[0],
     serial_number: "",
     serial_prefix: "",
     prefix_edited: false,
@@ -221,6 +330,9 @@ export default function AssetsView() {
   const user = useStore((state) => state.user)
   const role = (useStore((state) => state.role) || '').toLowerCase()
 
+  // Dynamic Master Article Catalog
+  const articleCatalog = useMemo(() => getArticleCatalog(), [drawerOpen])
+
   // Map of item_id -> active vale for loan badge display
   const activeValeMap = useMemo(() => {
     const m = {}
@@ -244,19 +356,24 @@ export default function AssetsView() {
   const setEditingItem = useStore(state => state.setEditingItem)
 
   const uniqueDescriptions = useMemo(() => {
-    return Array.from(new Set(allItems.map(i => i.description?.trim()).filter(Boolean))).sort();
+    return Array.from(new Set(allItems.map(i => (i.name || i.description)?.trim()).filter(Boolean))).sort();
   }, [allItems]);
 
   useEffect(() => {
     if (editingItem) {
-      const prefix = editingItem.serial_number ? editingItem.serial_number.split('-')[0] : generateAutoPrefix(editingItem.description);
+      const artName = editingItem.name || editingItem.description || "";
+      const prefix = editingItem.serial_number ? editingItem.serial_number.split('-')[0] : generateAutoPrefix(artName);
       const reqMaint = (editingItem.maintenance_frequency_months > 0 || !!editingItem.last_maintenance_date);
       setEditingId(editingItem.id)
       setFormData({
+        article_name: artName,
         description: editingItem.description || "",
         condition: editingItem.condition || "nuevo",
         location_id: editingItem.location_id || "",
         category: editingItem.category || "",
+        resource_type: editingItem.resource_type || "fixed",
+        origin_provider: editingItem.origin_provider || "",
+        acquisition_date: editingItem.acquisition_date || "",
         serial_number: editingItem.serial_number || "",
         serial_prefix: prefix,
         prefix_edited: !!editingItem.serial_number,
@@ -388,14 +505,19 @@ export default function AssetsView() {
 
   const openEdit = (item, e) => {
     e.stopPropagation()
-    const prefix = item.serial_number ? item.serial_number.split('-')[0] : generateAutoPrefix(item.description);
+    const artName = item.name || item.description || "";
+    const prefix = item.serial_number ? item.serial_number.split('-')[0] : generateAutoPrefix(artName);
     const reqMaint = (item.maintenance_frequency_months > 0 || !!item.last_maintenance_date);
     setEditingId(item.id)
     setFormData({
+      article_name: artName,
       description: item.description || "",
       condition: item.condition || "nuevo",
       location_id: item.location_id || "",
       category: item.category || "",
+      resource_type: item.resource_type || "fixed",
+      origin_provider: item.origin_provider || "",
+      acquisition_date: item.acquisition_date || "",
       serial_number: item.serial_number || "",
       serial_prefix: prefix,
       prefix_edited: !!item.serial_number,
@@ -449,8 +571,18 @@ export default function AssetsView() {
     e.preventDefault()
     setFormError("")
     
+    const artName = formData.article_name?.trim() || formData.description?.trim();
+    if (!artName) {
+      setFormError("El nombre o tipo de artículo es obligatorio.");
+      return;
+    }
+
+    // Auto add to catalog if not already there
+    addArticleToCatalog(artName, formData.category, formData.resource_type);
+
     const year = new Date().getFullYear();
-    const prefix = `SIGRE-${year}-`;
+    const autoPrefix = generateAutoPrefix(artName);
+    const prefix = `SIGRE-${year}-${autoPrefix}-`;
     const userEnteredSerial = formData.serial_number?.trim();
     let serial = userEnteredSerial;
     
@@ -471,10 +603,14 @@ export default function AssetsView() {
         }
 
         await db.items.update(editingId, {
-          description: formData.description,
+          name: artName,
+          description: formData.description || artName,
           condition: firstRow.condition,
           location_id: formData.location_id,
           category: formData.category,
+          resource_type: formData.resource_type || "fixed",
+          origin_provider: formData.origin_provider || null,
+          acquisition_date: formData.acquisition_date || null,
           serial_number: currentSerial,
           photoBase64: formData.photoBase64 || null,
           invoiceBase64: formData.invoiceBase64 || null,
@@ -490,10 +626,14 @@ export default function AssetsView() {
           const folio = generateFolio(basePrefix, i);
           await db.items.add({
             id: crypto.randomUUID(),
-            description: formData.description,
+            name: artName,
+            description: formData.description || artName,
             condition: row.condition,
             location_id: formData.location_id,
             category: formData.category || null,
+            resource_type: formData.resource_type || "fixed",
+            origin_provider: formData.origin_provider || null,
+            acquisition_date: formData.acquisition_date || null,
             serial_number: folio,
             photoBase64: formData.photoBase64 || null,
             invoiceBase64: formData.invoiceBase64 || null,
@@ -510,10 +650,14 @@ export default function AssetsView() {
         if (isSingleItem && userEnteredSerial) {
           await db.items.add({
             id: crypto.randomUUID(),
-            description: formData.description,
+            name: artName,
+            description: formData.description || artName,
             condition: firstRow.condition,
             location_id: formData.location_id,
             category: formData.category || null,
+            resource_type: formData.resource_type || "fixed",
+            origin_provider: formData.origin_provider || null,
+            acquisition_date: formData.acquisition_date || null,
             serial_number: userEnteredSerial,
             photoBase64: formData.photoBase64 || null,
             invoiceBase64: formData.invoiceBase64 || null,
@@ -529,10 +673,14 @@ export default function AssetsView() {
             const folio = generateFolio(basePrefix, i);
             await db.items.add({
               id: crypto.randomUUID(),
-              description: formData.description,
+              name: artName,
+              description: formData.description || artName,
               condition: row.condition,
               location_id: formData.location_id,
               category: formData.category || null,
+              resource_type: formData.resource_type || "fixed",
+              origin_provider: formData.origin_provider || null,
+              acquisition_date: formData.acquisition_date || null,
               serial_number: folio,
               photoBase64: formData.photoBase64 || null,
               invoiceBase64: formData.invoiceBase64 || null,
@@ -818,19 +966,30 @@ export default function AssetsView() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm text-foreground truncate">{item.description}</p>
+                      <p className="font-bold text-sm text-foreground truncate">{item.name || item.description}</p>
                       {(() => {
                         const maint = getMaintenanceInfo(item);
                         return maint ? <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${maint.color} shadow-[0_0_5px_rgba(0,0,0,0.2)]`} title={maint.text} /> : null;
                       })()}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    {item.name && item.description && item.description !== item.name && (
+                      <p className="text-xs text-muted-foreground line-clamp-1 italic">{item.description}</p>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Cant: {item.quantity || 1}</span>
+                      {item.resource_type === 'consumable' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                          🏷️ Consumible
+                        </span>
+                      )}
                       {item.category && <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{item.category}</span>}
                       {loc && <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">📍 {loc.name}</span>}
                     </div>
-                    {item.serial_number && <p className="text-[10px] text-muted-foreground mt-0.5">Serie: {item.serial_number}</p>}
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[10px] text-muted-foreground">
+                      {item.serial_number && <span>Serie: {item.serial_number}</span>}
+                      {item.origin_provider && <span>• Origen: {item.origin_provider}</span>}
+                    </div>
                     {activeValeMap[item.id] && (
                       <div className="flex items-center gap-1 mt-1">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
@@ -879,21 +1038,42 @@ export default function AssetsView() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* 1. NOMBRE (antes Descripción) */}
+                {/* 1. ARTÍCULO / NOMBRE (Catálogo Maestro) */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-foreground">Descripción *</label>
-                  <Input list="desc-suggestions" name="description" value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Ej. Minisplit Mirage 2T…" required className="h-12" />
-                  <datalist id="desc-suggestions">
-                    {uniqueDescriptions.map(desc => (
-                      <option key={desc} value={desc} />
-                    ))}
-                  </datalist>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5 text-primary" /> Nombre / Tipo de Artículo *
+                    </label>
+                    <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-bold">
+                      Catálogo Normalizado
+                    </span>
+                  </div>
+                  <ArticleAutocomplete
+                    value={formData.article_name}
+                    catalog={articleCatalog}
+                    onChange={val => {
+                      setFormData(p => ({
+                        ...p,
+                        article_name: val,
+                        description: p.description || val
+                      }))
+                    }}
+                    onSelectArticle={art => {
+                      setFormData(p => ({
+                        ...p,
+                        article_name: art.name,
+                        category: art.category || p.category,
+                        resource_type: art.resource_type || p.resource_type || 'fixed',
+                        description: p.description && p.description !== p.article_name ? p.description : ''
+                      }))
+                    }}
+                  />
                 </div>
 
+                {/* 2. CATEGORÍA Y TIPO DE RECURSO */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* 2. CATEGORÍA (Autocompletado Escribible) */}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-foreground">Categoría *</label>
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wide">Categoría *</label>
                     <CategoryAutocomplete
                       value={formData.category}
                       onChange={val => setFormData(p => ({ ...p, category: val }))}
@@ -901,15 +1081,72 @@ export default function AssetsView() {
                     />
                   </div>
 
-                  {/* 3. SALÓN / UBICACIÓN (Minimalista, solo Nombre) */}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-foreground">Salón / Ubicación *</label>
-                    <LocationAutocomplete
-                      locations={locations}
-                      value={formData.location_id}
-                      onChange={idOrName => setFormData(p => ({ ...p, location_id: idOrName }))}
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wide">Tipo de Recurso *</label>
+                    <Select
+                      value={formData.resource_type}
+                      onChange={e => setFormData(p => ({ ...p, resource_type: e.target.value }))}
+                      className="h-11 font-medium text-xs rounded-xl"
+                    >
+                      {RESOURCE_TYPES.map(rt => (
+                        <option key={rt.value} value={rt.value}>{rt.label}</option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+
+                {/* 3. DESCRIPCIÓN Y DETALLES FÍSICOS (Abierto) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      Detalle Físico / Especificaciones
+                    </label>
+                    <span className="text-[10px] text-muted-foreground">Color, medidas, modelo, etc.</span>
+                  </div>
+                  <Input
+                    name="description"
+                    value={formData.description}
+                    onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Ej. Madera color miel, patas tubulares con tapón de hule..."
+                    className="h-11 text-sm"
+                  />
+                </div>
+
+                {/* 4. ORIGEN / PROVEEDOR Y FECHA DE ADQUISICIÓN */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wide">Origen / Proveedor</label>
+                    <Select
+                      value={formData.origin_provider}
+                      onChange={e => setFormData(p => ({ ...p, origin_provider: e.target.value }))}
+                      className="h-11 font-medium text-xs rounded-xl"
+                    >
+                      <option value="">— Seleccionar origen —</option>
+                      {ORIGIN_PROVIDERS.map(prov => (
+                        <option key={prov} value={prov}>{prov}</option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wide">Fecha de Adquisición</label>
+                    <Input
+                      type="date"
+                      value={formData.acquisition_date}
+                      onChange={e => setFormData(p => ({ ...p, acquisition_date: e.target.value }))}
+                      className="h-11 text-xs rounded-xl"
                     />
                   </div>
+                </div>
+
+                {/* 5. SALÓN / UBICACIÓN (Minimalista, solo Nombre) */}
+                <div className="space-y-1.5 pt-1 border-t">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Salón / Ubicación Asignada *</label>
+                  <LocationAutocomplete
+                    locations={locations}
+                    value={formData.location_id}
+                    onChange={idOrName => setFormData(p => ({ ...p, location_id: idOrName }))}
+                  />
                 </div>
 
                 {/* 4. CANTIDAD Y ESTADO (Desglose Dinámico) */}
@@ -1211,12 +1448,23 @@ export default function AssetsView() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-lg text-foreground leading-tight">{detailItem.description}</h3>
-                    <div className="flex gap-1.5 mt-1 flex-wrap">
+                    <h3 className="font-bold text-lg text-foreground leading-tight">{detailItem.name || detailItem.description}</h3>
+                    {detailItem.name && detailItem.description && detailItem.description !== detailItem.name && (
+                      <p className="text-xs text-muted-foreground mt-0.5 italic">{detailItem.description}</p>
+                    )}
+                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${meta.color}`}>{meta.label}</span>
                       <span className="text-xs bg-primary/10 text-primary font-bold px-2.5 py-1 rounded-full">Cant: {detailItem.quantity || 1}</span>
+                      {detailItem.resource_type === 'consumable' && (
+                        <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-2.5 py-1 rounded-full">
+                          🏷️ Consumible
+                        </span>
+                      )}
                       {detailItem.category && <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{detailItem.category}</span>}
                     </div>
+                    {detailItem.origin_provider && (
+                      <p className="text-xs text-muted-foreground mt-1">📍 Origen: <span className="font-medium text-foreground">{detailItem.origin_provider}</span></p>
+                    )}
                   </div>
                   <Button variant="ghost" size="icon" className="rounded-full shrink-0 -mt-1" onClick={() => setDetailItem(null)}><X className="w-5 h-5" /></Button>
                 </div>
