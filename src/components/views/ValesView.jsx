@@ -78,6 +78,37 @@ export default function ValesView() {
     return filtered
   }, [valesQuery, role, user])
 
+  // Set of item IDs currently on an active or pending loan
+  const activeLoanItemIds = useMemo(() => {
+    const set = new Set()
+    valesQuery.forEach(v => {
+      if (v.sync_status !== 'pending_delete' && (v.vale_status === 'active' || v.vale_status === 'pending_approval')) {
+        if (v.item_id) set.add(v.item_id)
+      }
+    })
+    return set
+  }, [valesQuery])
+
+  // Helper to identify warehouse/storage locations
+  const isWarehouseLocation = (loc) => {
+    if (!loc) return false
+    const n = (loc.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    return n.includes('almacen') || n.includes('bodega') || n.includes('deposito') || n.includes('stock') || n.includes('resguardo')
+  }
+
+  // Items available for loan: strictly from warehouse and not currently loaned
+  const warehouseItems = useMemo(() => {
+    const hasWarehouses = locations.some(isWarehouseLocation)
+    return items.filter(item => {
+      if (activeLoanItemIds.has(item.id)) return false
+      const loc = locationMap[item.location_id]
+      if (hasWarehouses) {
+        return isWarehouseLocation(loc)
+      }
+      return !loc || isWarehouseLocation(loc)
+    })
+  }, [items, locations, locationMap, activeLoanItemIds])
+
   // Categorize vales
   const pendingVales = useMemo(() => vales.filter(v => v.vale_status === 'pending_approval'), [vales])
   const activeVales = useMemo(() => vales.filter(v => v.vale_status === 'active'), [vales])
@@ -416,12 +447,37 @@ export default function ValesView() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">Bien Solicitado / Asignado *</label>
-                  <Select value={formData.item_id} onChange={e => setFormData(p => ({ ...p, item_id: e.target.value }))} required>
-                    <option value="" disabled>Seleccione cualquier bien del inventario escolar...</option>
-                    {items.map(item => (
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold">Bien Solicitado (Almacén) *</label>
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      📦 {warehouseItems.length} disponible{warehouseItems.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+
+                  {warehouseItems.length === 0 ? (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">No hay bienes disponibles en Almacén</p>
+                        <p className="mt-0.5 opacity-90">
+                          Solo los bienes ubicados en áreas de <strong>Almacén o Bodega</strong> y sin préstamo activo pueden solicitarse en vale.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <Select 
+                    value={formData.item_id} 
+                    onChange={e => setFormData(p => ({ ...p, item_id: e.target.value }))} 
+                    required
+                    disabled={warehouseItems.length === 0}
+                  >
+                    <option value="" disabled>
+                      {warehouseItems.length === 0 ? 'Sin existencias en almacén...' : 'Seleccione un bien disponible en almacén...'}
+                    </option>
+                    {warehouseItems.map(item => (
                       <option key={item.id} value={item.id}>
-                        {item.description} — {locationMap[item.location_id]?.name || 'Plantel'} {item.serial_number ? `(${item.serial_number})` : ''}
+                        {item.description} — 📍 {locationMap[item.location_id]?.name || 'Almacén'} {item.serial_number ? `(Serie: ${item.serial_number})` : ''}
                       </option>
                     ))}
                   </Select>
