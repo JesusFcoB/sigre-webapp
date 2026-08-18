@@ -254,18 +254,18 @@ export default function ScannerView({ navigateTo }) {
             )}
           </Card>
 
-          <div className="flex flex-col gap-4 w-full mt-2">
+          <div className="flex flex-col gap-3 w-full mt-2">
             {(locationInfo || (!locationInfo && !hasItems)) && (
               <Button 
                 size="lg" 
-                className="h-16 text-xl rounded-2xl shadow-lg w-full bg-blue-600 hover:bg-blue-700"
+                className="h-16 text-lg rounded-2xl shadow-lg w-full bg-primary hover:bg-primary/90 flex items-center justify-center font-bold"
                 onClick={() => {
                   setSelectedLocation(scannedData);
                   navigateTo('classroom_inventory');
                 }}
               >
-                <FileText className="mr-3 h-6 w-6" />
-                Ver Inventario de Aula
+                <ScanBarcode className="mr-2.5 h-6 w-6" />
+                Iniciar Auditoría / Conteo de Aula
               </Button>
             )}
             
