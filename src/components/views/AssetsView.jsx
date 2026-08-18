@@ -12,10 +12,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import BarcodeScanner from "@/components/ui/BarcodeScanner"
+import LabelGeneratorModal from "@/components/ui/LabelGeneratorModal"
 import {
   Package, PackagePlus, Search, Filter, X, Edit2, Trash2,
   Camera, ScanBarcode, AlertCircle, CheckCircle2, ChevronDown,
-  FileSpreadsheet, FileText, Info, Layers, HelpCircle
+  FileSpreadsheet, FileText, Info, Layers, HelpCircle, Printer
 } from "lucide-react"
 import * as XLSX from "xlsx"
 import jsPDF from "jspdf"
@@ -321,6 +322,7 @@ export default function AssetsView() {
 
   // Detail modal
   const [detailItem, setDetailItem] = useState(null)
+  const [showLabelModal, setShowLabelModal] = useState(false)
 
   const itemsQuery = useLiveQuery(() => db.items.toArray(), [])
   const isLoadingItems = itemsQuery === undefined
@@ -792,6 +794,12 @@ export default function AssetsView() {
           <p className="text-muted-foreground text-sm mt-0.5">{filteredItems.length} de {allItems.length} registros</p>
         </div>
         <div className="flex items-center gap-2">
+          {role !== 'profesor' && (
+            <Button variant="outline" size="sm" onClick={() => setShowLabelModal(true)} className="h-10 rounded-xl font-bold gap-1.5 border-primary/30 text-primary hover:bg-primary/10" title="Imprimir Planilla de Etiquetas con Códigos QR">
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">Etiquetas QR</span>
+            </Button>
+          )}
           {role === 'director' && (
             <>
               <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={exportExcel} title="Exportar Excel">
@@ -1620,6 +1628,15 @@ export default function AssetsView() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Label Generator Modal */}
+      {showLabelModal && (
+        <LabelGeneratorModal
+          items={allItems}
+          locations={locations}
+          onClose={() => setShowLabelModal(false)}
+        />
       )}
     </div>
   )

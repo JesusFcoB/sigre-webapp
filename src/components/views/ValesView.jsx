@@ -6,10 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { FileSignature, Plus, X, FileText, CheckCircle2, PenTool, Clock, XCircle, RotateCcw, AlertTriangle, User, Calendar, Package, HelpCircle } from 'lucide-react'
+import { 
+  FileSignature, Plus, X, FileText, CheckCircle2, PenTool, 
+  Clock, XCircle, RotateCcw, AlertTriangle, User, Calendar, 
+  Package, HelpCircle, ArrowRight, Tag, Layers, Check
+} from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { syncValesToSupabase } from '@/lib/sync'
+import { syncValesToSupabase, syncItemsToSupabase } from '@/lib/sync'
 import SignatureModal from '@/components/ui/SignatureModal'
 import { useStore } from '@/store/useStore'
 
@@ -18,6 +22,9 @@ function getValeStatusMeta(vale) {
   const now = new Date()
   const endDate = vale.end_date ? new Date(vale.end_date + 'T23:59:59') : null
 
+  if (vale.vale_type === 'supply' && vale.vale_status === 'completed') {
+    return { label: 'Suministrado / Despachado', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300', icon: Package }
+  }
   if (vale.vale_status === 'pending_approval') return { label: 'Pendiente', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300', icon: Clock }
   if (vale.vale_status === 'rejected') return { label: 'Rechazado', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', icon: XCircle }
   if (vale.vale_status === 'completed') return { label: 'Devuelto', color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', icon: CheckCircle2 }
@@ -40,10 +47,12 @@ export default function ValesView() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [showSignatureModal, setShowSignatureModal] = useState(false)
   const [formData, setFormData] = useState({
+    vale_type: 'loan', // 'loan' (Préstamo Devolutivo) | 'supply' (Suministro Consumible)
     person_name: '',
     start_date: new Date().toISOString().split('T')[0],
     end_date: '',
     item_id: '',
+    quantity_requested: 1,
     signatureBase64: null
   })
 
@@ -83,7 +92,7 @@ export default function ValesView() {
     const set = new Set()
     valesQuery.forEach(v => {
       if (v.sync_status !== 'pending_delete' && (v.vale_status === 'active' || v.vale_status === 'pending_approval')) {
-        if (v.item_id) set.add(v.item_id)
+        if (v.item_id && v.vale_type !== 'supply') set.add(v.item_id)
       }
     })
     return set
@@ -96,23 +105,43 @@ export default function ValesView() {
     return n.includes('almacen') || n.includes('bodega') || n.includes('deposito') || n.includes('stock') || n.includes('resguardo')
   }
 
-  // Items available for loan: strictly from warehouse and not currently loaned
-  const warehouseItems = useMemo(() => {
+  // Items in warehouse
+  const allWarehouseItems = useMemo(() => {
     const hasWarehouses = locations.some(isWarehouseLocation)
     return items.filter(item => {
-      if (activeLoanItemIds.has(item.id)) return false
       const loc = locationMap[item.location_id]
       if (hasWarehouses) {
         return isWarehouseLocation(loc)
       }
       return !loc || isWarehouseLocation(loc)
     })
-  }, [items, locations, locationMap, activeLoanItemIds])
+  }, [items, locations, locationMap])
 
-  // Categorize vales
+  // Warehouse items for LOANS (fixed/devolutive, not on active loan)
+  const warehouseLoanItems = useMemo(() => {
+    return allWarehouseItems.filter(item => {
+      if (item.resource_type === 'consumable') return false
+      return !activeLoanItemIds.has(item.id)
+    })
+  }, [allWarehouseItems, activeLoanItemIds])
+
+  // Warehouse items for SUPPLIES (consumables with available stock > 0)
+  const warehouseSupplyItems = useMemo(() => {
+    return allWarehouseItems.filter(item => {
+      const isConsumable = item.resource_type === 'consumable' || item.category === 'Papelería y Consumibles'
+      return isConsumable && (Number(item.quantity) || 1) > 0
+    })
+  }, [allWarehouseItems])
+
+  // Selectable items in drawer based on vale_type
+  const selectableItems = formData.vale_type === 'supply' ? warehouseSupplyItems : warehouseLoanItems
+  const selectedItemRecord = itemMap[formData.item_id]
+
+  // Categorize vales for tabs
   const pendingVales = useMemo(() => vales.filter(v => v.vale_status === 'pending_approval'), [vales])
-  const activeVales = useMemo(() => vales.filter(v => v.vale_status === 'active'), [vales])
-  const historyVales = useMemo(() => vales.filter(v => v.vale_status === 'completed' || v.vale_status === 'rejected'), [vales])
+  const activeVales = useMemo(() => vales.filter(v => v.vale_status === 'active' && v.vale_type !== 'supply'), [vales])
+  const supplyVales = useMemo(() => vales.filter(v => v.vale_type === 'supply' && v.vale_status === 'completed'), [vales])
+  const historyVales = useMemo(() => vales.filter(v => (v.vale_status === 'completed' && v.vale_type !== 'supply') || v.vale_status === 'rejected'), [vales])
 
   // Counts
   const expiredCount = useMemo(() => {
@@ -125,18 +154,45 @@ export default function ValesView() {
     try {
       const userName = user?.user_metadata?.name || user?.email || (role === 'profesor' ? 'Profesor' : 'Director')
       const isProfesor = role === 'profesor'
+      const isSupply = formData.vale_type === 'supply'
       
-      await db.vales.add({
+      const newVale = {
         ...formData,
+        quantity_requested: Number(formData.quantity_requested) || 1,
         person_name: isProfesor ? userName : formData.person_name,
-        vale_status: isProfesor ? 'pending_approval' : 'active',
+        vale_status: isProfesor ? 'pending_approval' : (isSupply ? 'completed' : 'active'),
         requested_by: userName,
         requested_at: new Date().toISOString(),
         approved_at: isProfesor ? null : new Date().toISOString(),
+        completed_at: (!isProfesor && isSupply) ? new Date().toISOString() : null,
         sync_status: 'pending_create'
-      })
+      }
+
+      await db.vales.add(newVale)
+
+      // If Director creates a supply directly, discount stock immediately
+      if (!isProfesor && isSupply && formData.item_id) {
+        const target = await db.items.get(formData.item_id)
+        if (target) {
+          const newQty = Math.max(0, (Number(target.quantity) || 1) - (Number(formData.quantity_requested) || 1))
+          await db.items.update(target.id, {
+            quantity: newQty,
+            sync_status: 'pending_update'
+          })
+          if (navigator.onLine) syncItemsToSupabase()
+        }
+      }
+
       setDrawerOpen(false)
-      setFormData({ person_name: '', start_date: new Date().toISOString().split('T')[0], end_date: '', item_id: '', signatureBase64: null })
+      setFormData({
+        vale_type: 'loan',
+        person_name: '',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        item_id: '',
+        quantity_requested: 1,
+        signatureBase64: null
+      })
       if (navigator.onLine) syncValesToSupabase()
     } catch (err) {
       console.error(err)
@@ -144,11 +200,37 @@ export default function ValesView() {
   }
 
   const handleApprove = async (vale) => {
-    await db.vales.update(vale.id, {
-      vale_status: 'active',
-      approved_at: new Date().toISOString(),
-      sync_status: vale.sync_status === 'synced' ? 'pending_update' : vale.sync_status
-    })
+    const isSupply = vale.vale_type === 'supply'
+    
+    if (isSupply) {
+      // Approve and complete supply + deduct stock
+      await db.vales.update(vale.id, {
+        vale_status: 'completed',
+        approved_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        sync_status: vale.sync_status === 'synced' ? 'pending_update' : vale.sync_status
+      })
+
+      if (vale.item_id) {
+        const target = await db.items.get(vale.item_id)
+        if (target) {
+          const newQty = Math.max(0, (Number(target.quantity) || 1) - (Number(vale.quantity_requested) || 1))
+          await db.items.update(target.id, {
+            quantity: newQty,
+            sync_status: 'pending_update'
+          })
+          if (navigator.onLine) syncItemsToSupabase()
+        }
+      }
+    } else {
+      // Approve loan
+      await db.vales.update(vale.id, {
+        vale_status: 'active',
+        approved_at: new Date().toISOString(),
+        sync_status: vale.sync_status === 'synced' ? 'pending_update' : vale.sync_status
+      })
+    }
+
     if (navigator.onLine) syncValesToSupabase()
   }
 
@@ -186,281 +268,322 @@ export default function ValesView() {
   const exportVale = (vale) => {
     const item = itemMap[vale.item_id]
     const doc = new jsPDF()
+    const isSupply = vale.vale_type === 'supply'
+    
     doc.setFontSize(20)
-    doc.text("VALE DE RESGUARDO", 105, 20, { align: "center" })
+    doc.text(isSupply ? "VALE DE SUMINISTRO DE MATERIAL" : "VALE DE PRÉSTAMO Y RESGUARDO", 105, 20, { align: "center" })
     
-    doc.setFontSize(12)
-    doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString()}`, 14, 40)
-    doc.text(`Responsable: ${vale.person_name}`, 14, 50)
-    doc.text(`Válido desde: ${vale.start_date} hasta ${vale.end_date || 'Indefinido'}`, 14, 60)
+    doc.setFontSize(11)
+    doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString('es-MX')}`, 14, 40)
+    doc.text(`Solicitante / Receptor: ${vale.person_name}`, 14, 48)
+    doc.text(`Tipo de Vale: ${isSupply ? 'Suministro Consumible (No Devolutivo)' : 'Préstamo Temporal (Devolutivo)'}`, 14, 56)
+    if (!isSupply) {
+      doc.text(`Vigencia: Desde ${vale.start_date} hasta ${vale.end_date || 'Entrega pendiente'}`, 14, 64)
+    }
     
-    doc.text("El abajo firmante asume la responsabilidad del siguiente bien:", 14, 80)
+    doc.text(isSupply ? "Se hace entrega del siguiente material consumible para uso educativo:" : "El abajo firmante asume la responsabilidad del resguardo del siguiente bien:", 14, isSupply ? 68 : 76)
     
     autoTable(doc, {
-      startY: 90,
-      head: [["Descripción", "No. Serie", "Condición"]],
+      startY: isSupply ? 76 : 84,
+      head: [["Artículo", "No. Serie / Folio", "Categoría", "Cantidad", "Almacén de Salida"]],
       body: [
         [
-          item?.description || "Desconocido", 
-          item?.serial_number || "—", 
-          item?.condition || "—"
+          item?.name || item?.description || "Artículo no especificado",
+          item?.serial_number || "S/N",
+          item?.category || "General",
+          isSupply ? (vale.quantity_requested || 1) : 1,
+          locationMap[item?.location_id]?.name || "Almacén General"
         ]
-      ]
+      ],
+      headStyles: { fillColor: isSupply ? [126, 34, 206] : [30, 58, 138] }
     })
     
-    const finalY = doc.lastAutoTable.finalY || 120
+    const finalY = doc.lastAutoTable.finalY + 30
+    doc.text("_______________________________", 105, finalY, { align: "center" })
+    doc.text(vale.person_name, 105, finalY + 8, { align: "center" })
+    doc.text("Firma de Conformidad", 105, finalY + 15, { align: "center" })
     
-    if (vale.signatureBase64 || vale.signature_base64) {
-      doc.addImage(vale.signatureBase64 || vale.signature_base64, 'PNG', 85, finalY + 18, 40, 22)
+    if (vale.signatureBase64) {
+      doc.addImage(vale.signatureBase64, 'PNG', 85, finalY - 25, 40, 20)
     }
-
-    doc.line(40, finalY + 40, 170, finalY + 40)
-    doc.text("Firma de Conformidad", 105, finalY + 50, { align: "center" })
-    doc.text(vale.person_name, 105, finalY + 60, { align: "center" })
     
-    doc.save(`Vale_${vale.person_name.replace(/\s/g, '_')}_${String(vale.id).slice(0, 5)}.pdf`)
+    doc.save(`SIGRE_Vale_${vale.person_name.replace(/\s+/g, '_')}_${vale.start_date}.pdf`)
   }
 
-  const tabs = [
-    { id: 'pending', label: 'Pendientes', count: pendingVales.length },
-    { id: 'active', label: 'Activos', count: activeVales.length },
-    { id: 'history', label: 'Historial', count: historyVales.length },
-  ]
-
-  const currentVales = activeTab === 'pending' ? pendingVales : activeTab === 'active' ? activeVales : historyVales
-
   return (
-    <div className="flex flex-col h-full pb-28 space-y-4">
+    <div className="flex flex-col h-full pb-24 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between pt-4 pb-2">
+      <div className="flex items-center justify-between pt-4 pb-2 border-b">
         <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <FileSignature className="w-6 h-6 text-primary" /> {role === 'profesor' ? 'Mis Vales' : 'Vales de Resguardo'}
+            <FileSignature className="w-6 h-6 text-primary" /> Vales y Préstamos
             <HelpTooltip 
-              title={role === 'profesor' ? 'Solicitudes de Vale' : 'Vales de Resguardo'}
-              text={role === 'profesor'
-                ? 'Solicita préstamos de bienes al Director. Puedes dar seguimiento al estado de tus solicitudes desde aquí.'
-                : 'Administra préstamos de bienes a docentes. Genera vales con firma digital, aprueba solicitudes y controla devoluciones con fechas límite.'}
+              title="Gestión de Vales y Suministros" 
+              text="Administra préstamos temporales de equipo y suministros de papelería/limpieza de almacén. Permite firmar vales digitalmente y descargar actas PDF." 
             />
           </h2>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {role === 'profesor' ? 'Seguimiento de tus solicitudes de préstamo' : 'Control de préstamos de bienes'}
-          </p>
+          <p className="text-muted-foreground text-sm mt-0.5">Control de préstamos temporales y suministros de almacén</p>
         </div>
         <Button onClick={() => setDrawerOpen(true)} className="h-10 rounded-xl font-bold gap-1.5 bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">{role === 'profesor' ? 'Solicitar Vale' : 'Nuevo Vale'}</span>
+          <span className="hidden sm:inline">Nuevo Vale</span>
         </Button>
       </div>
 
-      {/* Metrics Cards */}
-      {role === 'director' && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{pendingVales.length}</p>
-            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">Por Aprobar</p>
-          </div>
-          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{activeVales.length}</p>
-            <p className="text-[10px] font-bold text-blue-600 dark:text-blue-500 uppercase tracking-wider">Prestados</p>
-          </div>
-          <div className={`rounded-xl p-3 text-center border ${expiredCount > 0 ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'}`}>
-            <p className={`text-2xl font-bold ${expiredCount > 0 ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>{expiredCount}</p>
-            <p className={`text-[10px] font-bold uppercase tracking-wider ${expiredCount > 0 ? 'text-red-600 dark:text-red-500' : 'text-green-600 dark:text-green-500'}`}>Vencidos</p>
-          </div>
-        </div>
-      )}
-
       {/* Tabs */}
-      <div className="flex bg-muted p-1 rounded-xl">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${activeTab === tab.id ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-            {tab.count > 0 && (
-              <span className={`text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 ${activeTab === tab.id ? 'bg-primary text-primary-foreground' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="flex bg-muted p-1 rounded-2xl gap-1 overflow-x-auto">
+        <button
+          className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
+            activeTab === 'pending' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground'
+          }`}
+          onClick={() => setActiveTab('pending')}
+        >
+          <Clock className="w-3.5 h-3.5 text-amber-500" />
+          <span>Pendientes ({pendingVales.length})</span>
+        </button>
+
+        <button
+          className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
+            activeTab === 'active' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground'
+          }`}
+          onClick={() => setActiveTab('active')}
+        >
+          <Package className="w-3.5 h-3.5 text-blue-500" />
+          <span>Préstamos Activos ({activeVales.length})</span>
+          {expiredCount > 0 && (
+            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+              {expiredCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
+            activeTab === 'supply' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground'
+          }`}
+          onClick={() => setActiveTab('supply')}
+        >
+          <Tag className="w-3.5 h-3.5 text-purple-500" />
+          <span>Suministros ({supplyVales.length})</span>
+        </button>
+
+        <button
+          className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
+            activeTab === 'history' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground'
+          }`}
+          onClick={() => setActiveTab('history')}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+          <span>Historial ({historyVales.length})</span>
+        </button>
       </div>
 
-      {/* Vale Cards */}
-      {currentVales.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4 bg-muted/20 border border-dashed rounded-3xl text-center">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
-            <FileSignature className="w-8 h-8 opacity-80" />
-          </div>
-          <h3 className="font-bold text-lg text-foreground mb-1">
-            {activeTab === 'pending' ? 'Sin solicitudes pendientes' : activeTab === 'active' ? 'Sin vales activos' : 'Sin historial de préstamos'}
-          </h3>
-          <p className="text-xs text-muted-foreground max-w-xs mb-5 font-medium">
-            {activeTab === 'pending' 
-              ? 'Todas las solicitudes de préstamo han sido procesadas.' 
-              : activeTab === 'active' 
-              ? 'No hay bienes en resguardo o préstamo temporal en este momento.' 
-              : 'El historial de vales completados o rechazados se mostrará aquí.'}
-          </p>
-          <Button onClick={() => setDrawerOpen(true)} size="sm" className="rounded-xl font-bold bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            {role === 'profesor' ? 'Solicitar Préstamo' : 'Generar Nuevo Vale'}
-          </Button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {currentVales.map(vale => {
-            const item = itemMap[vale.item_id]
-            const statusMeta = getValeStatusMeta(vale)
-            const StatusIcon = statusMeta.icon
-            const daysRemaining = getDaysRemaining(vale.end_date)
-            const isExpired = vale.vale_status === 'active' && daysRemaining !== null && daysRemaining < 0
+      {/* Content based on Active Tab */}
+      {(() => {
+        let currentList = []
+        if (activeTab === 'pending') currentList = pendingVales
+        else if (activeTab === 'active') currentList = activeVales
+        else if (activeTab === 'supply') currentList = supplyVales
+        else currentList = historyVales
 
-            return (
-              <div key={vale.id} className={`bg-card border rounded-2xl overflow-hidden shadow-sm transition-all hover:shadow-md ${isExpired ? 'border-red-300 dark:border-red-700' : ''}`}>
-                {/* Status Bar */}
-                <div className={`px-4 py-2 flex items-center justify-between ${isExpired ? 'bg-red-50 dark:bg-red-950/30' : 'bg-muted/30'}`}>
-                  <div className="flex items-center gap-2">
-                    <StatusIcon className="w-4 h-4" />
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusMeta.color}`}>{statusMeta.label}</span>
-                  </div>
-                  {vale.vale_status === 'active' && daysRemaining !== null && (
-                    <span className={`text-xs font-bold ${isExpired ? 'text-red-600 dark:text-red-400' : daysRemaining <= 3 ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                      {isExpired ? `Venció hace ${Math.abs(daysRemaining)} día(s)` : `${daysRemaining} día(s) restantes`}
-                    </span>
-                  )}
-                </div>
+        if (currentList.length === 0) {
+          return (
+            <div className="flex flex-col items-center justify-center py-16 px-4 bg-muted/20 border border-dashed rounded-3xl text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
+                <FileSignature className="w-8 h-8 opacity-80" />
+              </div>
+              <h3 className="font-bold text-lg text-foreground mb-1">
+                {activeTab === 'pending' ? 'No hay solicitudes pendientes' : 
+                 activeTab === 'active' ? 'No hay préstamos activos' : 
+                 activeTab === 'supply' ? 'No hay suministros registrados' : 'Sin historial de vales'}
+              </h3>
+              <p className="text-xs text-muted-foreground max-w-xs font-medium">
+                {activeTab === 'pending' ? 'Las solicitudes de préstamo o suministro hechas por profesores aparecerán aquí.' : 'Los registros se actualizarán conforme se autoricen y entreguen vales.'}
+              </p>
+            </div>
+          )
+        }
 
-                <div className="p-4 space-y-3">
-                  {/* Person info */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <User className="w-5 h-5 text-primary" />
-                    </div>
+        return (
+          <div className="flex flex-col gap-3">
+            {currentList.map(vale => {
+              const item = itemMap[vale.item_id]
+              const meta = getValeStatusMeta(vale)
+              const remaining = getDaysRemaining(vale.end_date)
+              const isSupply = vale.vale_type === 'supply'
+
+              return (
+                <div key={vale.id} className="bg-card border rounded-2xl p-4 shadow-sm flex flex-col gap-3 hover:border-primary/40 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-base text-foreground truncate">{vale.person_name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${meta.color}`}>
+                          {meta.label}
+                        </span>
+                        {isSupply ? (
+                          <span className="bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            📦 Suministro ({vale.quantity_requested || 1} uds)
+                          </span>
+                        ) : (
+                          <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            🏢 Préstamo Devolutivo
+                          </span>
+                        )}
+                      </div>
+                      
+                      <h4 className="font-bold text-base text-foreground mt-1 truncate">
+                        {item?.name || item?.description || 'Artículo no especificado'}
+                      </h4>
                       <p className="text-xs text-muted-foreground">
-                        {vale.requested_by && vale.requested_by !== vale.person_name ? `Solicitado por: ${vale.requested_by}` : ''}
+                        Solicitante: <span className="font-semibold text-foreground">{vale.person_name}</span>
                       </p>
                     </div>
-                  </div>
 
-                  {/* Item info */}
-                  <div className="bg-muted/40 border rounded-xl p-3 flex items-start gap-3">
-                    {item?.photoBase64 ? (
-                      <img src={item.photoBase64} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <Package className="w-5 h-5 text-muted-foreground opacity-50" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm truncate">{item?.description || 'Artículo no encontrado'}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Serie: {item?.serial_number || 'N/A'} • {item?.condition || '—'}</p>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => exportVale(vale)} title="Descargar Vale PDF">
+                        <FileText className="w-4 h-4" />
+                      </Button>
+                      {role === 'director' && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(vale.id)} title="Eliminar Vale">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
 
-                  {/* Dates */}
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
+                  {/* Dates and details */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                    <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
-                      <span>Desde: <strong className="text-foreground">{vale.start_date}</strong></span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>Hasta: <strong className={`${isExpired ? 'text-red-600' : 'text-foreground'}`}>{vale.end_date || 'Sin límite'}</strong></span>
-                    </div>
+                      Salida: {vale.start_date}
+                    </span>
+                    {!isSupply && vale.end_date && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        Compromiso: {vale.end_date}
+                        {remaining !== null && (
+                          <strong className={remaining < 0 ? 'text-red-500 ml-1' : remaining <= 2 ? 'text-amber-500 ml-1' : 'text-emerald-600 ml-1'}>
+                            ({remaining < 0 ? `Vencido hace ${Math.abs(remaining)}d` : remaining === 0 ? 'Vence hoy' : `${remaining}d restantes`})
+                          </strong>
+                        )}
+                      </span>
+                    )}
+                    {item?.serial_number && (
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5" />
+                        Serie: {item.serial_number}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-1">
-                    {vale.vale_status === 'pending_approval' && role !== 'profesor' && (
-                      <>
-                        <Button className="flex-1 h-10 rounded-xl font-bold bg-green-600 hover:bg-green-700 text-white" onClick={() => handleApprove(vale)}>
-                          <CheckCircle2 className="w-4 h-4 mr-1.5" /> Aprobar
-                        </Button>
-                        <Button variant="outline" className="flex-1 h-10 rounded-xl font-bold text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/30" onClick={() => handleReject(vale)}>
-                          <XCircle className="w-4 h-4 mr-1.5" /> Rechazar
-                        </Button>
-                      </>
-                    )}
-                    {vale.vale_status === 'pending_approval' && role === 'profesor' && (
-                      <div className="flex-1 text-center py-2 text-sm text-amber-600 font-bold bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/50">
-                        Esperando validación del Directivo
-                      </div>
-                    )}
-                    {vale.vale_status === 'active' && (
-                      <>
-                        {role !== 'profesor' && (
-                          <Button className="flex-1 h-10 rounded-xl font-bold bg-primary hover:bg-primary/90" onClick={() => handleComplete(vale)}>
-                            <RotateCcw className="w-4 h-4 mr-1.5" /> Marcar Devuelto
+                  {/* Action Buttons for Director / Admin */}
+                  {role !== 'profesor' && (
+                    <div className="flex gap-2 justify-end pt-1">
+                      {vale.vale_status === 'pending_approval' && (
+                        <>
+                          <Button size="sm" variant="outline" className="h-9 text-xs rounded-xl text-destructive hover:bg-destructive/10" onClick={() => handleReject(vale)}>
+                            <XCircle className="w-3.5 h-3.5 mr-1" /> Rechazar
                           </Button>
-                        )}
-                        <Button variant="outline" className={`h-10 ${role === 'profesor' ? 'flex-1 rounded-xl text-primary font-bold border-primary/20 hover:bg-primary/10' : 'w-10 px-0 rounded-xl'}`} onClick={() => exportVale(vale)} title="Descargar PDF">
-                          <FileText className={`w-4 h-4 ${role === 'profesor' ? 'mr-2' : 'text-red-500'}`} /> {role === 'profesor' && 'PDF Vale'}
-                        </Button>
-                      </>
-                    )}
-                    {(vale.vale_status === 'completed' || vale.vale_status === 'rejected') && (
-                      <>
-                        <Button variant="outline" className="flex-1 h-10 rounded-xl text-primary font-bold border-primary/20 hover:bg-primary/10" onClick={() => exportVale(vale)}>
-                          <FileText className="w-4 h-4 mr-2" /> PDF Vale
-                        </Button>
-                        {role === 'director' && (
-                          <Button variant="ghost" className="h-10 w-10 p-0 text-destructive rounded-xl hover:bg-destructive/10" onClick={() => handleDelete(vale.id)}>
-                            <X className="w-5 h-5" />
+                          <Button size="sm" className="h-9 text-xs rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleApprove(vale)}>
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                            {isSupply ? "Aprobar y Despachar" : "Aprobar Préstamo"}
                           </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
+                        </>
+                      )}
+                      {vale.vale_status === 'active' && !isSupply && (
+                        <Button size="sm" className="h-9 text-xs rounded-xl font-bold bg-primary hover:bg-primary/90" onClick={() => handleComplete(vale)}>
+                          <RotateCcw className="w-3.5 h-3.5 mr-1" /> Marcar como Devuelto
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )
+      })()}
 
-      {/* Create Vale Drawer (Director) */}
+      {/* Create Vale Drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
-          <div className="relative w-full max-w-md bg-card rounded-3xl shadow-2xl z-10 animate-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold">{role === 'profesor' ? 'Solicitar Préstamo' : 'Generar Vale Directo'}</h3>
-                <Button variant="ghost" size="icon" onClick={() => setDrawerOpen(false)}><X className="w-5 h-5" /></Button>
+          <div className="relative w-full max-w-lg bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl z-10 max-h-[92vh] overflow-y-auto animate-in slide-in-from-bottom-4 duration-300">
+            <div className="p-5 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">Solicitud de Vale</h3>
+                  <p className="text-muted-foreground text-sm">Préstamo o suministro de material de almacén</p>
+                </div>
+                <Button variant="ghost" size="icon" className="rounded-full" onClick={() => setDrawerOpen(false)}><X className="w-5 h-5" /></Button>
               </div>
+
               <form onSubmit={handleCreate} className="space-y-4">
+                {/* 1. Tipo de Vale */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold">Responsable / Maestro *</label>
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Tipo de Solicitud *</label>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, vale_type: 'loan', item_id: '' }))}
+                      className={`py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                        formData.vale_type === 'loan' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Package className="w-4 h-4 text-primary" />
+                      <span>Préstamo Temporal</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, vale_type: 'supply', item_id: '' }))}
+                      className={`py-2.5 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                        formData.vale_type === 'supply' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Tag className="w-4 h-4 text-purple-600" />
+                      <span>Suministro Consumible</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground italic">
+                    {formData.vale_type === 'loan' 
+                      ? 'Para equipos y mobiliario fijo que deben devolverse al almacén.' 
+                      : 'Para papelería y artículos de consumo que se descuentan del inventario.'}
+                  </p>
+                </div>
+
+                {/* 2. Solicitante */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground uppercase tracking-wide">Persona Responsable / Solicitante *</label>
                   <Input 
                     value={role === 'profesor' ? (user?.user_metadata?.name || user?.email || 'Profesor') : formData.person_name} 
                     onChange={e => setFormData(p => ({ ...p, person_name: e.target.value }))} 
-                    placeholder="Ej. Juan Pérez" 
+                    placeholder="Ej. Juan Pérez López" 
                     required 
                     disabled={role === 'profesor'}
-                    className={role === 'profesor' ? "bg-muted/30" : ""}
+                    className={role === 'profesor' ? "bg-muted/30 h-11" : "h-11"}
                   />
                 </div>
+
+                {/* 3. Selección de Bien de Almacén */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold">Bien Solicitado (Almacén) *</label>
-                    <span className="text-[11px] font-medium text-muted-foreground">
-                      📦 {warehouseItems.length} disponible{warehouseItems.length === 1 ? '' : 's'}
+                    <label className="text-xs font-bold text-foreground uppercase tracking-wide">
+                      {formData.vale_type === 'supply' ? 'Material Consumible (Almacén) *' : 'Bien Solicitado (Almacén) *'}
+                    </label>
+                    <span className="text-[11px] font-bold text-muted-foreground">
+                      📦 {selectableItems.length} disponible{selectableItems.length === 1 ? '' : 's'}
                     </span>
                   </div>
 
-                  {warehouseItems.length === 0 ? (
+                  {selectableItems.length === 0 ? (
                     <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-bold">No hay bienes disponibles en Almacén</p>
+                        <p className="font-bold">Sin existencias en Almacén</p>
                         <p className="mt-0.5 opacity-90">
-                          Solo los bienes ubicados en áreas de <strong>Almacén o Bodega</strong> y sin préstamo activo pueden solicitarse en vale.
+                          {formData.vale_type === 'supply'
+                            ? 'No hay materiales consumibles registrados en áreas de Almacén o Bodega.'
+                            : 'No hay bienes de activo fijo disponibles en Almacén sin préstamo activo.'}
                         </p>
                       </div>
                     </div>
@@ -470,51 +593,84 @@ export default function ValesView() {
                     value={formData.item_id} 
                     onChange={e => setFormData(p => ({ ...p, item_id: e.target.value }))} 
                     required
-                    disabled={warehouseItems.length === 0}
+                    disabled={selectableItems.length === 0}
+                    className="h-11 text-xs"
                   >
                     <option value="" disabled>
-                      {warehouseItems.length === 0 ? 'Sin existencias en almacén...' : 'Seleccione un bien disponible en almacén...'}
+                      {selectableItems.length === 0 ? 'Sin existencias...' : 'Selecciona un artículo disponible...'}
                     </option>
-                    {warehouseItems.map(item => (
+                    {selectableItems.map(item => (
                       <option key={item.id} value={item.id}>
-                        {item.description} — 📍 {locationMap[item.location_id]?.name || 'Almacén'} {item.serial_number ? `(Serie: ${item.serial_number})` : ''}
+                        {item.name || item.description} — 📍 {locationMap[item.location_id]?.name || 'Almacén'} {item.quantity ? `(Stock: ${item.quantity})` : ''} {item.serial_number ? `(Serie: ${item.serial_number})` : ''}
                       </option>
                     ))}
                   </Select>
                 </div>
+
+                {/* Si es consumible: Selector de Cantidad */}
+                {formData.vale_type === 'supply' && (
+                  <div className="space-y-1.5 bg-purple-50/60 dark:bg-purple-950/20 p-3 rounded-2xl border border-purple-200 dark:border-purple-900/50">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-purple-900 dark:text-purple-300 uppercase">Cantidad a Suministrar *</label>
+                      {selectedItemRecord && (
+                        <span className="text-xs text-purple-700 dark:text-purple-300 font-bold">
+                          Máx. disponible: {selectedItemRecord.quantity || 1}
+                        </span>
+                      )}
+                    </div>
+                    <Input
+                      type="number"
+                      min="1"
+                      max={selectedItemRecord ? Number(selectedItemRecord.quantity) || 1 : 999}
+                      value={formData.quantity_requested}
+                      onChange={e => setFormData(p => ({ ...p, quantity_requested: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
+                      required
+                      className="h-11 font-bold text-sm bg-background"
+                    />
+                    <p className="text-[11px] text-purple-700 dark:text-purple-400">
+                      Al aprobarse este vale, las {formData.quantity_requested} unidades se descontarán automáticamente del almacén.
+                    </p>
+                  </div>
+                )}
+
+                {/* Fechas */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold">Fecha Inicio *</label>
-                    <Input type="date" value={formData.start_date} onChange={e => setFormData(p => ({ ...p, start_date: e.target.value }))} required />
+                    <label className="text-xs font-bold text-foreground uppercase">Fecha de Salida *</label>
+                    <Input type="date" value={formData.start_date} onChange={e => setFormData(p => ({ ...p, start_date: e.target.value }))} required className="h-11 text-xs" />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-bold">Fecha Fin (Opcional)</label>
-                    <Input type="date" value={formData.end_date} onChange={e => setFormData(p => ({ ...p, end_date: e.target.value }))} />
-                  </div>
+                  {formData.vale_type === 'loan' && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-foreground uppercase">Fecha Compromiso</label>
+                      <Input type="date" value={formData.end_date} onChange={e => setFormData(p => ({ ...p, end_date: e.target.value }))} className="h-11 text-xs" />
+                    </div>
+                  )}
                 </div>
                 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-bold">Firma Digital (Opcional)</label>
+                {/* Firma Digital */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-bold text-foreground uppercase">Firma Digital (Opcional)</label>
                   {formData.signatureBase64 ? (
-                    <div className="relative border rounded-xl p-2 bg-muted/30">
+                    <div className="relative border rounded-2xl p-2 bg-muted/30">
                       <img src={formData.signatureBase64} alt="Firma" className="h-20 w-auto mx-auto" />
                       <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 text-destructive" onClick={() => setFormData(p => ({ ...p, signatureBase64: null }))}>
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
                   ) : (
-                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2" onClick={() => setShowSignatureModal(true)}>
+                    <Button type="button" variant="outline" className="w-full h-12 border-dashed border-2 rounded-2xl" onClick={() => setShowSignatureModal(true)}>
                       <PenTool className="w-4 h-4 mr-2" />
                       Agregar Firma Digital
                     </Button>
                   )}
-                  <p className="text-xs text-muted-foreground mt-1 text-center">Si se deja en blanco, el vale deberá firmarse en papel impreso.</p>
+                  <p className="text-xs text-muted-foreground text-center">Si se deja en blanco, podrá firmarse físicamente en papel.</p>
                 </div>
 
-                <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setDrawerOpen(false)}>Cancelar</Button>
-                  <Button type="submit" className="flex-1 h-12 rounded-xl font-bold bg-primary hover:bg-primary/90">
-                    <CheckCircle2 className="w-4 h-4 mr-2" /> Guardar
+                <div className="flex gap-3 pt-3">
+                  <Button type="button" variant="outline" className="flex-1 h-12 rounded-2xl" onClick={() => setDrawerOpen(false)}>Cancelar</Button>
+                  <Button type="submit" className="flex-1 h-12 rounded-2xl font-bold bg-primary hover:bg-primary/90">
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    {role === 'profesor' ? 'Enviar Solicitud' : 'Crear Vale'}
                   </Button>
                 </div>
               </form>
