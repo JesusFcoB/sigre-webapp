@@ -1,59 +1,123 @@
-# SIGRE - Sistema Integral de Gestión de Recursos Escolares
+# SIGRE — Sistema Integral de Gestión de Recursos Escolares
 
-Sistema Integral de Gestión de Recursos Escolares (SIGRE).
-Una Aplicación Web Progresiva (PWA) enfocada en la gestión de inventario, mantenimiento y control de recursos en planteles escolares. Diseñada con un enfoque "Offline-First" para operar sin problemas en zonas con conectividad limitada.
+> **PWA Offline-First para la Gestión de Inventarios, Auditorías Físicas, Vales de Almacén y Control Patrimonial en Planteles Escolares.**
 
-## Características Principales (Implementadas hasta ahora)
+SIGRE es una Aplicación Web Progresiva (PWA) de alto rendimiento desarrollada para optimizar el control de activos fijos, suministros de papelería, auditorías in situ en aulas y reportes de incidencias en centros educativos, operando de forma 100% autónoma sin conexión a internet y sincronizándose automáticamente con la nube (Supabase) cuando hay conectividad.
 
-*   **100% Offline-First:** Los profesores y directivos pueden seguir trabajando sin internet gracias a la base de datos local en el navegador (IndexedDB / Dexie.js).
-*   **Sincronización Automática:** Cuando el dispositivo detecta conexión Wi-Fi, envía automáticamente los datos locales a la nube (Supabase).
-*   **Autenticación en la Nube (Supabase Auth):** Sistema de cuentas real y seguro vinculado a correos electrónicos, con manejo estricto de sesiones y roles corporativos.
-*   **Sistema de Roles (RBAC):** El "Director" (Admin) tiene control total (editar, eliminar, gestionar usuarios, conciliaciones), mientras que el "Capturista" o "Profesor" tienen permisos limitados para registrar información.
-*   **Altas Rápidas y Optimización de Imágenes:** Registro ágil de bienes con compresión automática de fotografías a formato WebP (Client-Side) para ahorrar ancho de banda y espacio local.
-*   **Módulo de Reportes de Incidencias:** Vista rediseñada (tipo Drawer) que permite reportar incidencias detalladas, incluyendo la ubicación específica del problema dentro de un área.
-*   **Módulo de Conciliación Inteligente:** Compara el inventario contra lo que realmente existe en el plantel. Incluye una **Validación Estricta de Archivos Excel** para garantizar que cumplan con el formato oficial de la SEP antes de ser procesados.
-*   **Módulo de Vales de Resguardo:** Genera asignaciones formales de bienes a maestros u operativos, incluye captura de **firma digital directamente en pantalla** y generación de documento PDF.
-*   **Módulo Independiente de "Bajas":** Proceso rápido y seguro para descartar artículos por obsolescencia, daño o robo, registrando evidencia fotográfica.
-*   **Gestión Administrativa de Usuarios:** Panel dedicado donde el Director puede dar de alta cuentas, modificar roles (Director, Capturista, Profesor), eliminar usuarios, y forzar la restauración de contraseñas de forma segura (vía SQL RPC) sin requerir verificación por correo (ideal para entornos escolares controlados).
-*   **Dashboard Directivo:** Panel de control con métricas en tiempo real y gráficas interactivas que reflejan el estado del inventario (Nuevo, Bueno, Regular, Malo) alimentadas directamente de la base de datos local.
-*   **Sincronización Inteligente de Archivos:** Las fotografías, firmas digitales y facturas se capturan localmente, se optimizan (WebP) y se suben automáticamente a la nube a través de **Supabase Storage**, manteniendo la base de datos de PostgreSQL limpia y rápida guardando únicamente las URLs públicas.
-*   **Semáforo de Mantenimiento Preventivo:** Calcula dinámicamente alertas de servicio técnico según frecuencia asignada (Verde, Amarillo, Rojo).
-*   **Interfaz Optimizada para Móviles (Mobile-First):** Acciones siempre accesibles desde teléfonos mediante Bottom Navigation.
+---
 
-## ¿Cómo ejecutar el proyecto?
+## 🚀 Funcionalidades Principales Implementadas
 
-### Opción 1: Ejecución Automática (Recomendada en Windows)
+### 1. 📦 Catálogo Maestro y Control de Inventarios
+* **Taxonomía Normalizada:** Selector de nombres de bienes estandarizados (*Minisplit, Mesabanco individual, Computadora de escritorio, Proyector, etc.*) con opción de enriquecimiento dinámico del catálogo.
+* **Separación de Identidad y Atributos:** Distinción clara entre el *Nombre del Artículo* de catálogo y los *Detalles Físicos* (color, material, medidas, especificaciones).
+* **Clasificación Patrimonial:** Soporte para **Activos Fijos (Devolutivos)** y **Materiales Consumibles**.
+* **Trazabilidad de Origen:** Registro del proveedor o fuente de adquisición (*SEC, Asociación de Padres de Familia - APF, La Escuela es Nuestra - LEEN, Donación, Recurso Propio*).
+* **Altas en Lote con Serialización:** Generación automática de folios y registros individuales por cada unidad física.
+* **Compresión Fotográfica Client-Side:** Conversión automática de fotos y facturas a formato **WebP** ligero para optimizar el almacenamiento local y el ancho de banda.
 
-Simplemente haz doble clic sobre el archivo **`iniciar_sigre.bat`** que se encuentra en la raíz del proyecto.
-Este archivo se encargará automáticamente de:
-1. Instalar todas las dependencias necesarias.
-2. Iniciar el servidor local de desarrollo.
-3. Mostrarte en la consola la ruta (usualmente `http://localhost:5173`) a la cual debes entrar en tu navegador.
+---
 
-### Opción 2: Ejecución Manual por Consola
+### 2. 🔍 Auditoría Física y Conteo In Situ por Código QR / Barras
+* **Escáner de Puerta de Aula:** Al leer el código QR colocado en el marco del aula o seleccionar el salón, se abre el panel de inventario y auditoría de dicho espacio.
+* **Lector Continuo de Alta Velocidad con Cámara:** Permite auditar el mobiliario y equipo del salón pasando la cámara continuamente por los códigos de barra o QR.
+* **Feedback Auditivo y Visual:** Emisión de sonido (*beep/chime*) de confirmación en cada lectura válida.
+* **Detección Automática de Bienes:**
+  * 🟢 **Verificado:** Marca el bien con check verde, registra la hora y actualiza la barra de progreso en vivo.
+  * 🔵 **Ya Verificado:** Avisa si un artículo ya fue contabilizado previamente en la misma sesión.
+  * 🟡 **Bien Ajeno:** Alerta si el artículo leído físicamente pertenece a otro salón (*ej. "Este mesabanco pertenece al Aula 2B"*).
+  * 🔴 **No Registrado:** Alerta de código no identificado en el padrón escolar.
+* **Checklist y Marcado Manual:** Permite verificar artículos manualmente tocando la casilla en pantalla cuando las etiquetas físicas estén deterioradas.
+* **Acta de Auditoría en PDF:** Descarga inmediata del acta de verificación física oficial con porcentaje de completitud y relación de faltantes.
 
-Si prefieres usar la terminal (Símbolo del sistema, PowerShell, o bash), sigue estos pasos:
+---
 
-1. Abre tu terminal en la carpeta principal de `sigre-webapp`.
-2. Asegúrate de tener instalado [Node.js](https://nodejs.org/).
-3. Ejecuta el comando para instalar las librerías:
+### 3. 🖨️ Generador Masivo de Etiquetas Adhesivas (QR y Barras)
+* **Plantillas PDF de Impresión Directa:** Genera hojas listas para imprimir en papel adhesivo estándar con códigos QR nítidos vectorizados.
+* **Formatos Disponibles:**
+  * **🔖 Placa Institucional (10 por hoja carta):** Etiquetas grandes de alta durabilidad con nombre del plantel, nombre del bien, especificaciones, serie destacada y código QR.
+  * **🏷️ Compacta Estándar (30 por hoja carta):** Formato compatible con hojas de etiquetas Avery 5160 para etiquetado masivo de butacas y mobiliario.
+* **Filtros Avanzados:** Permite imprimir por aula específica, por categoría de bien o por selección manual con casillas.
+
+---
+
+### 4. 📋 Vales de Préstamo y Suministro de Almacén
+* **Regla Estricta de Almacén:** Los vales solo permiten solicitar artículos físicamente disponibles en áreas de *Almacén o Bodega General*.
+* **Tipología de Vales:**
+  * **🏢 Préstamo Temporal (Devolutivo):** Para computadoras, cañones, herramientas o mobiliario. Requiere fecha compromiso de entrega, firma de conformidad y reingresa automáticamente al stock de almacén al marcarse como devuelto.
+  * **📦 Suministro de Consumibles (No Reembolsable):** Para resmas de hojas, plumones, tóner o artículos de limpieza. Permite solicitar cantidades específicas (`ej. 3 paquetes`) y, al ser aprobado por el Director, **descuenta automáticamente la cantidad del inventario de almacén**.
+* **Pestañas de Control:** Clasificación organizada en *Pendientes de Aprobación*, *Préstamos Activos*, *Suministros Despachados* e *Historial*.
+* **Firma Digital en Pantalla:** Captura de firma autógrafa desde el celular o tablet y generación de comprobante de vale en PDF.
+
+---
+
+### 5. 👥 Expediente Institucional de Personal y Usuarios
+* **Ficha de Usuario Enriquecida:** Registro de Matrícula / Clave Presupuestal, Género, Antigüedad / Fecha de Ingreso y Correo Institucional.
+* **Control de Acceso por Roles (RBAC):**
+  * **Director (Admin):** Control total, aprobación de vales, altas, bajas, configuración de espacios y gestión de usuarios.
+  * **Capturista:** Acceso operativo a inventario de bienes, escáner QR, reporte de fallas y visualización de vales.
+  * **Profesor:** Solicitud de vales de almacén, auditoría física de su aula asignada y reporte de incidencias.
+* **Restablecimiento Forzado de Contraseñas:** Permite al Director resetear claves de acceso de forma inmediata vía RPC seguro de PostgreSQL sin requerir validación por correo electrónico.
+
+---
+
+### 6. 🏢 Catálogo de Aulas y Espacios Escolares
+* **Vinculación de Responsables:** El campo de responsable se alimenta directamente del catálogo de usuarios registrados, garantizando integridad referencial.
+* **Generador de Señalética QR Oficial:** Descarga de carteles imprimibles en PDF con el código QR de puerta y datos del responsable del aula.
+
+---
+
+### 7. 🛠️ Reporte de Incidencias y Módulo de Bajas
+* **Reportes de Mantenimiento:** Envío de incidencias con tipo de falla (eléctrica, plomería, aire acondicionado, mobiliario), ubicación exacta y evidencia fotográfica.
+* **Módulo de Bajas Patrimoniales:** Procedimiento formal para retirar bienes por desgaste irreparable, robo o daño, capturando motivo, lugar de resguardo y evidencia fotográfica.
+
+---
+
+### 8. 📊 Dashboard Directivo y Semáforo de Mantenimiento
+* **Métricas en Tiempo Real:** Gráficas de distribución de inventario por estado (Nuevo, Bueno, Regular, Malo) y conteos por salón.
+* **Semáforo Preventivo:** Alertas automáticas de servicio técnico según la periodicidad configurada en cada equipo.
+
+---
+
+### 9. ⚡ Arquitectura Offline-First y Sincronización
+* **Almacenamiento Local (IndexedDB / Dexie.js):** Toda la operación funciona sin conexión a internet.
+* **Sincronización Bidireccional con Supabase:** Sincroniza datos y sube archivos multimedia (fotos, firmas, facturas) a **Supabase Storage** manteniendo la base de datos limpia con URLs públicas.
+
+---
+
+## 🔮 ¿Qué falta por implementar? (Roadmap Institucional)
+
+| Módulo / Función | Descripción | Prioridad |
+| :--- | :--- | :---: |
+| **📊 Conciliación Automatizada con Padrón Oficial SEC** | Importación del archivo Excel oficial de la SEC y cruce automático de series para generar la clasificación tripartita: 🟢 *Conciliados (Match)*, 🟡 *Sobrantes en Escuela (APF/LEEN)* y 🔴 *Faltantes Oficiales*, con acta de entrega de supervisión. | **Alta (Próximo Sprint)** |
+| **📉 Bitácora de Movimientos y Depreciación** | Registro histórico de traspasos de bienes entre salones/profesores y cálculo de depreciación contable según la Ley General de Contabilidad Gubernamental (LGCG). | **Media** |
+| **🔔 Alertas Push y Notificaciones de Vales Vencidos** | Recordatorios automáticos al docente y directivo cuando un préstamo temporal haya sobrepasado su fecha de entrega. | **Media** |
+| **⚡ Optimización de Bundles (Code-Splitting)** | Separación de librerías (`jspdf`, `xlsx`, `html5-qrcode`) en chunks independientes para maximizar la velocidad de carga en dispositivos móviles de gama baja. | **Media** |
+
+---
+
+## 💻 ¿Cómo ejecutar el proyecto?
+
+### Opción 1: Ejecución Automática (Windows)
+Haz doble clic sobre el archivo **`iniciar_sigre.bat`** en la carpeta principal del proyecto.
+
+### Opción 2: Ejecución Manual por Terminal
+1. Abre tu terminal en la raíz del proyecto.
+2. Instala las dependencias:
    ```bash
    npm install
    ```
-4. Levanta el entorno de desarrollo:
+3. Inicia el servidor de desarrollo:
    ```bash
    npm run dev
    ```
-5. Abre el enlace local proporcionado (por defecto `http://localhost:5173`) en tu navegador de preferencia.
+4. Abre `http://localhost:5173` en tu navegador.
 
 ---
-## Tecnologías utilizadas (Stack Tecnológico)
-*   **Frontend:** React.js con Vite, Tailwind CSS y shadcn/ui.
-*   **Motor Offline:** Dexie.js (para base de datos local) y Zustand (manejo de estados).
-*   **Backend / Auth / BD:** Supabase (PostgreSQL, Supabase Auth y Storage).
-*   **Componentes Adicionales:** `html5-qrcode` para lectura de cámaras, `SheetJS (xlsx)` para parseo de Excels, `Recharts` para las métricas visuales, y `jsPDF` para exportación de vales.
 
----
-## ¿Qué falta por implementar / Mejoras Futuras (Roadmap)?
-*   **Impresión de Etiquetas y Códigos QR en PDF:** Crear un módulo para seleccionar múltiples bienes y generar plantillas en PDF listas para imprimir sus etiquetas de identificación física (para posteriormente ser escaneadas).
-*   **Historial de Depreciación y Movimientos:** Mantener un registro contable del valor estimado del equipo a lo largo del tiempo, así como una bitácora de los movimientos físicos (cambios de salón o responsables).
+## 🛠️ Stack Tecnológico
+
+* **Frontend:** React 18, Vite, Tailwind CSS, Lucide Icons, Radix UI.
+* **Motor Offline-First:** Dexie.js (IndexedDB) y Zustand.
+* **Backend y Autenticación:** Supabase (PostgreSQL, Row Level Security, Auth y Storage).
+* **Herramientas Especiales:** `html5-qrcode` (lector QR/barras), `qrcode` (generación de QR), `jspdf` & `jspdf-autotable` (generación de actas y etiquetas), `xlsx` (procesamiento Excel), `recharts` (gráficas interactivas).
