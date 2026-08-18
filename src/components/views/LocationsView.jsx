@@ -246,7 +246,7 @@ export default function LocationsView({ navigateTo }) {
               text="Registra las aulas y espacios del plantel con su docente responsable. Genera códigos QR únicos para pegarlos en las puertas y facilitar el escaneo del inventario." 
             />
           </h2>
-          <p className="text-muted-foreground text-sm">Administra los espacios escolares y sus docentes responsables</p>
+          <p className="text-muted-foreground text-sm">Administra los espacios escolares y sus responsables</p>
         </div>
       </div>
 
@@ -285,27 +285,25 @@ export default function LocationsView({ navigateTo }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase">Docente Responsable</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Responsable</label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 z-10 pointer-events-none">
                     <User className="w-4 h-4" />
                   </span>
-                  <Input
+                  <select
                     name="responsible_name"
                     value={formData.responsible_name}
                     onChange={handleInputChange}
-                    placeholder="Selecciona o escribe el nombre del docente"
-                    list="teachers-list"
                     required
-                    className="pl-10 h-11"
-                  />
-                  <datalist id="teachers-list">
+                    className="flex h-11 w-full rounded-xl border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 appearance-none cursor-pointer"
+                  >
+                    <option value="">— Seleccionar responsable —</option>
                     {registeredUsers.map(u => (
-                      <option key={u.id} value={u.name || u.username || u.email}>
-                        {u.name ? `${u.name} (${u.role || 'usuario'})` : u.email}
+                      <option key={u.id} value={u.name ? `${u.name} (${u.email})` : u.email}>
+                        {u.name || u.email} — {u.role === 'director' ? 'Director' : u.role === 'capturista' ? 'Capturista' : 'Profesor'}
                       </option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
               </div>
             </div>
