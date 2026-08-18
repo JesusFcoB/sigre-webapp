@@ -26,7 +26,7 @@ export const signOut = async () => {
   if (error) throw error
 }
 
-export const createUser = async (email, password, role, name) => {
+export const createUser = async (email, password, role, name, extraMeta = {}) => {
   const { data, error } = await secondarySupabase.auth.signUp({
     email,
     password,
@@ -34,12 +34,23 @@ export const createUser = async (email, password, role, name) => {
       data: { // User Metadata
         role: role,
         name: name,
+        matricula: extraMeta.matricula || '',
+        genero: extraMeta.genero || '',
+        antiguedad: extraMeta.antiguedad || '',
       }
     }
   })
   
   if (error) throw error
   return data
+}
+
+export const updateUserMetadata = async (targetUserId, metadata) => {
+  const { error } = await supabase.rpc('update_user_metadata', {
+    target_user_id: targetUserId,
+    new_metadata: metadata
+  })
+  if (error) throw error
 }
 
 export const getUsersList = async () => {
