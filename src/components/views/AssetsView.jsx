@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import BarcodeScanner from "@/components/ui/BarcodeScanner"
 import LabelGeneratorModal from "@/components/ui/LabelGeneratorModal"
+import AssetGroupDetailModal from "@/components/views/AssetGroupDetailModal"
 import {
   Package, PackagePlus, Search, Filter, X, Edit2, Trash2,
-  Camera, ScanBarcode, AlertCircle, CheckCircle2, ChevronDown,
+  Camera, ScanBarcode, AlertCircle, CheckCircle2, ChevronDown, ChevronRight,
   FileSpreadsheet, FileText, Info, Layers, HelpCircle, Printer
 } from "lucide-react"
 import * as XLSX from "xlsx"
@@ -320,9 +321,10 @@ export default function AssetsView() {
   const [formError, setFormError] = useState("")
   const [isScanning, setIsScanning] = useState(false)
 
-  // Detail modal
-  const [detailItem, setDetailItem] = useState(null)
+  // Detail modal (group-level)
+  const [detailGroupName, setDetailGroupName] = useState(null)
   const [showLabelModal, setShowLabelModal] = useState(false)
+  const [labelModalFilterItems, setLabelModalFilterItems] = useState(null)
 
   const itemsQuery = useLiveQuery(() => db.items.toArray(), [])
   const isLoadingItems = itemsQuery === undefined
@@ -484,21 +486,43 @@ export default function AssetsView() {
     })
   }, [allItems, search, filterLocation, filterConditions, filterCategory, activeTab, role, teacherLocationIds, locationMap])
 
-  const buildDetail = (item) => {
-    const sameDesc = allItems.filter(i => i.description?.toLowerCase() === item.description?.toLowerCase())
-    const byLocation = {}
-    const byCondition = {}
-    sameDesc.forEach(i => {
-      const q = i.quantity || 1
-      const locName = locationMap[i.location_id]?.name || "Sin aula"
-      const resp = locationMap[i.location_id]?.responsible_name || "—"
-      if (!byLocation[locName]) byLocation[locName] = { count: 0, responsible: resp }
-      byLocation[locName].count += q
-      byCondition[i.condition] = (byCondition[i.condition] || 0) + q
+  // Group filtered items by article name for the list view
+  const groupedItems = useMemo(() => {
+    const groups = {}
+    filteredItems.forEach(item => {
+      const key = (item.name || item.description || 'Sin nombre').trim().toLowerCase()
+      if (!groups[key]) {
+        groups[key] = {
+          name: item.name || item.description || 'Sin nombre',
+          description: item.description,
+          category: item.category,
+          resource_type: item.resource_type,
+          photoBase64: null,
+          items: [],
+          conditions: {},
+          locationIds: new Set()
+        }
+      }
+      const g = groups[key]
+      g.items.push(item)
+      g.conditions[item.condition] = (g.conditions[item.condition] || 0) + 1
+      if (item.location_id) g.locationIds.add(item.location_id)
+      if (!g.photoBase64 && item.photoBase64) g.photoBase64 = item.photoBase64
+      if (!g.category && item.category) g.category = item.category
     })
-    const totalQty = sameDesc.reduce((acc, i) => acc + (i.quantity || 1), 0)
-    return { total: totalQty, byLocation, byCondition }
-  }
+    return Object.values(groups).sort((a, b) => b.items.length - a.items.length)
+  }, [filteredItems])
+
+  // All active items for the selected group (unfiltered to show full picture)
+  const detailGroupItems = useMemo(() => {
+    if (!detailGroupName) return []
+    const key = detailGroupName.trim().toLowerCase()
+    return allItems.filter(i =>
+      (i.name || i.description || '').trim().toLowerCase() === key &&
+      i.status !== 'discarded' &&
+      i.sync_status !== 'pending_delete'
+    )
+  }, [detailGroupName, allItems])
 
   const toggleCondition = (val) =>
     setFilterConditions(prev => prev.includes(val) ? prev.filter(c => c !== val) : [...prev, val])
@@ -616,35 +640,13 @@ export default function AssetsView() {
           serial_number: currentSerial,
           photoBase64: formData.photoBase64 || null,
           invoiceBase64: formData.invoiceBase64 || null,
-          quantity: Number(firstRow.quantity) || 1,
+          quantity: 1,
           maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
           last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null,
           sync_status: 'pending_update'
         });
 
-        const basePrefix = currentSerial;
-        for (let i = 1; i < formData.breakdown.length; i++) {
-          const row = formData.breakdown[i];
-          const folio = generateFolio(basePrefix, i);
-          await db.items.add({
-            id: crypto.randomUUID(),
-            name: artName,
-            description: formData.description || artName,
-            condition: row.condition,
-            location_id: formData.location_id,
-            category: formData.category || null,
-            resource_type: formData.resource_type || "fixed",
-            origin_provider: formData.origin_provider || null,
-            acquisition_date: formData.acquisition_date || null,
-            serial_number: folio,
-            photoBase64: formData.photoBase64 || null,
-            invoiceBase64: formData.invoiceBase64 || null,
-            sync_status: "pending_create",
-            quantity: Number(row.quantity) || 1,
-            maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
-            last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null
-          });
-        }
+        // In individual-item model, editing only updates the single item above
       } else {
         const firstRow = formData.breakdown[0] || { condition: "nuevo", quantity: formData.quantity };
         const isSingleItem = formData.breakdown.length === 1 && (Number(firstRow.quantity) || 1) === 1;
@@ -670,27 +672,32 @@ export default function AssetsView() {
           });
         } else {
           const basePrefix = userEnteredSerial || prefix;
+          let globalOffset = 0;
           for (let i = 0; i < formData.breakdown.length; i++) {
             const row = formData.breakdown[i];
-            const folio = generateFolio(basePrefix, i);
-            await db.items.add({
-              id: crypto.randomUUID(),
-              name: artName,
-              description: formData.description || artName,
-              condition: row.condition,
-              location_id: formData.location_id,
-              category: formData.category || null,
-              resource_type: formData.resource_type || "fixed",
-              origin_provider: formData.origin_provider || null,
-              acquisition_date: formData.acquisition_date || null,
-              serial_number: folio,
-              photoBase64: formData.photoBase64 || null,
-              invoiceBase64: formData.invoiceBase64 || null,
-              sync_status: "pending_create",
-              quantity: Number(row.quantity) || 1,
-              maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
-              last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null
-            });
+            const rowQty = Number(row.quantity) || 1;
+            for (let j = 0; j < rowQty; j++) {
+              const folio = generateFolio(basePrefix, globalOffset);
+              globalOffset++;
+              await db.items.add({
+                id: crypto.randomUUID(),
+                name: artName,
+                description: formData.description || artName,
+                condition: row.condition,
+                location_id: formData.location_id,
+                category: formData.category || null,
+                resource_type: formData.resource_type || "fixed",
+                origin_provider: formData.origin_provider || null,
+                acquisition_date: formData.acquisition_date || null,
+                serial_number: folio,
+                photoBase64: formData.photoBase64 || null,
+                invoiceBase64: formData.invoiceBase64 || null,
+                sync_status: "pending_create",
+                quantity: 1,
+                maintenance_frequency_months: formData.requires_maintenance ? (Number(formData.maintenance_frequency_months) || 0) : 0,
+                last_maintenance_date: formData.requires_maintenance ? (formData.last_maintenance_date || null) : null
+              });
+            }
           }
         }
       }
@@ -765,7 +772,7 @@ export default function AssetsView() {
   }, [])
 
   const virtualizer = useVirtualizer({
-    count: isLoadingItems ? 8 : filteredItems.length,
+    count: isLoadingItems ? 8 : groupedItems.length,
     getScrollElement: () => scrollEl,
     estimateSize: () => 100,
     overscan: 5,
@@ -791,7 +798,7 @@ export default function AssetsView() {
               text="Inventario completo de bienes muebles del plantel. Puedes registrar, editar, filtrar por estado/ubicación y exportar reportes en Excel o PDF." 
             />
           </h2>
-          <p className="text-muted-foreground text-sm mt-0.5">{filteredItems.length} de {allItems.length} registros</p>
+          <p className="text-muted-foreground text-sm mt-0.5">{groupedItems.length} tipos • {filteredItems.length} unidades</p>
         </div>
         <div className="flex items-center gap-2">
           {role !== 'profesor' && (
@@ -945,11 +952,9 @@ export default function AssetsView() {
               )
             }
 
-            const item = filteredItems[virtualItem.index]
-            if (!item) return null
+            const group = groupedItems[virtualItem.index]
+            if (!group) return null
 
-            const meta = conditionMeta(item.condition)
-            const loc = locationMap[item.location_id]
             return (
               <div
                 key={virtualItem.key}
@@ -963,61 +968,40 @@ export default function AssetsView() {
                 }}
                 className="pb-2"
               >
-                <div onClick={() => setDetailItem(item)}
-                  className="h-full bg-card border rounded-2xl p-3.5 flex items-center gap-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer active:scale-[0.99] group">
-                  {item.photoBase64 ? (
-                    <img src={item.photoBase64} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                <div onClick={() => setDetailGroupName(group.name)}
+                  className="h-full bg-card border rounded-2xl p-3.5 flex items-center gap-3 shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer active:scale-[0.99]">
+                  {group.photoBase64 ? (
+                    <img src={group.photoBase64} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
                   ) : (
                     <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
                       <Package className="w-5 h-5 text-muted-foreground opacity-50" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm text-foreground truncate">{item.name || item.description}</p>
-                      {(() => {
-                        const maint = getMaintenanceInfo(item);
-                        return maint ? <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${maint.color} shadow-[0_0_5px_rgba(0,0,0,0.2)]`} title={maint.text} /> : null;
-                      })()}
-                    </div>
-                    {item.name && item.description && item.description !== item.name && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 italic">{item.description}</p>
+                    <p className="font-bold text-sm text-foreground truncate">{group.name}</p>
+                    {group.description && group.description !== group.name && (
+                      <p className="text-xs text-muted-foreground line-clamp-1 italic">{group.description}</p>
                     )}
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.color}`}>{meta.label}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Cant: {item.quantity || 1}</span>
-                      {item.resource_type === 'consumable' && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                          🏷️ Consumible
-                        </span>
-                      )}
-                      {item.category && <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{item.category}</span>}
-                      {loc && <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">📍 {loc.name}</span>}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                        {group.items.length} {group.items.length === 1 ? 'unidad' : 'unidades'}
+                      </span>
+                      {group.category && <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{group.category}</span>}
+                      <span className="text-[10px] text-muted-foreground">📍 {group.locationIds.size} {group.locationIds.size === 1 ? 'ubicación' : 'ubicaciones'}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[10px] text-muted-foreground">
-                      {item.serial_number && <span>Serie: {item.serial_number}</span>}
-                      {item.origin_provider && <span>• Origen: {item.origin_provider}</span>}
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      {CONDITIONS.map(c => {
+                        const count = group.conditions[c.value] || 0
+                        if (count === 0) return null
+                        return (
+                          <span key={c.value} className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${c.color}`}>
+                            {c.label}: {count}
+                          </span>
+                        )
+                      })}
                     </div>
-                    {activeValeMap[item.id] && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                          📋 Prestado a: {activeValeMap[item.id].person_name} {activeValeMap[item.id].end_date ? `| Hasta: ${activeValeMap[item.id].end_date}` : ''}
-                        </span>
-                      </div>
-                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0 transition-opacity">
-                    {role !== 'profesor' && (
-                      <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); openEdit(item, e); }} title="Editar">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                    {role === 'director' && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDelete(item.id, e); }} title="Eliminar">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                 </div>
               </div>
             )
@@ -1438,158 +1422,56 @@ export default function AssetsView() {
         </div>
       )}
 
-      {/* Detail Modal */}
-      {detailItem && (() => {
-        const detail = buildDetail(detailItem)
-        const meta = conditionMeta(detailItem.condition)
-        return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDetailItem(null)} />
-            <div className="relative w-full max-w-md bg-card rounded-3xl shadow-2xl z-10 max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-              <div className="p-5 space-y-5">
-                <div className="flex items-start gap-3">
-                  {detailItem.photoBase64 ? (
-                    <img src={detailItem.photoBase64} alt="" className="w-16 h-16 rounded-2xl object-cover shrink-0" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <Package className="w-7 h-7 text-primary" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-lg text-foreground leading-tight">{detailItem.name || detailItem.description}</h3>
-                    {detailItem.name && detailItem.description && detailItem.description !== detailItem.name && (
-                      <p className="text-xs text-muted-foreground mt-0.5 italic">{detailItem.description}</p>
-                    )}
-                    <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${meta.color}`}>{meta.label}</span>
-                      <span className="text-xs bg-primary/10 text-primary font-bold px-2.5 py-1 rounded-full">Cant: {detailItem.quantity || 1}</span>
-                      {detailItem.resource_type === 'consumable' && (
-                        <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 font-bold px-2.5 py-1 rounded-full">
-                          🏷️ Consumible
-                        </span>
-                      )}
-                      {detailItem.category && <span className="text-xs bg-muted text-muted-foreground px-2.5 py-1 rounded-full">{detailItem.category}</span>}
-                    </div>
-                    {detailItem.origin_provider && (
-                      <p className="text-xs text-muted-foreground mt-1">📍 Origen: <span className="font-medium text-foreground">{detailItem.origin_provider}</span></p>
-                    )}
-                  </div>
-                  <Button variant="ghost" size="icon" className="rounded-full shrink-0 -mt-1" onClick={() => setDetailItem(null)}><X className="w-5 h-5" /></Button>
-                </div>
+      {/* Group Detail Modal */}
+      {detailGroupName && detailGroupItems.length > 0 && (
+        <AssetGroupDetailModal
+          groupName={detailGroupName}
+          groupItems={detailGroupItems}
+          locations={locations}
+          locationMap={locationMap}
+          role={role}
+          onClose={() => setDetailGroupName(null)}
+          onEditItem={(item) => {
+            setDetailGroupName(null)
+            const artName = item.name || item.description || ""
+            const reqMaint = (item.maintenance_frequency_months > 0 || !!item.last_maintenance_date)
+            setEditingId(item.id)
+            setFormData({
+              article_name: artName,
+              description: item.description || "",
+              condition: item.condition || "nuevo",
+              location_id: item.location_id || "",
+              category: item.category || "",
+              resource_type: item.resource_type || "fixed",
+              origin_provider: item.origin_provider || "",
+              acquisition_date: item.acquisition_date || "",
+              serial_number: item.serial_number || "",
+              serial_prefix: item.serial_number || "",
+              prefix_edited: !!item.serial_number,
+              photoBase64: item.photoBase64 || "",
+              invoiceBase64: item.invoiceBase64 || "",
+              quantity: 1,
+              maintenance_frequency_months: item.maintenance_frequency_months || 0,
+              last_maintenance_date: item.last_maintenance_date || "",
+              requires_maintenance: reqMaint,
+              breakdown: [{ condition: item.condition || "nuevo", quantity: 1 }]
+            })
+            setFormError("")
+            setDrawerOpen(true)
+          }}
+          onBajaItem={(item) => {
+            setDetailGroupName(null)
+            setItemToBaja(item)
+            setBajaModalOpen(true)
+          }}
+          onGenerateQR={(items) => {
+            setLabelModalFilterItems(items)
+            setShowLabelModal(true)
+          }}
+        />
+      )}
+      {/* Baja Modal */}
 
-                <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
-                    <Info className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs font-medium">Total de unidades registradas</p>
-                    <p className="text-4xl font-black text-primary">{detail.total}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-bold text-foreground mb-2">Distribución por Salón</h4>
-                  <div className="rounded-xl border overflow-hidden">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-muted/60">
-                          <th className="text-left px-3 py-2 font-bold text-muted-foreground">Salón</th>
-                          <th className="text-left px-3 py-2 font-bold text-muted-foreground">Responsable</th>
-                          <th className="text-right px-3 py-2 font-bold text-muted-foreground">Cant.</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(detail.byLocation).map(([loc, { count, responsible }]) => (
-                          <tr key={loc} className="border-t hover:bg-muted/30 transition-colors">
-                            <td className="px-3 py-2 font-medium">{loc}</td>
-                            <td className="px-3 py-2 text-muted-foreground">{responsible}</td>
-                            <td className="px-3 py-2 text-right font-bold text-primary">{count}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-bold text-foreground mb-2">Distribución por Estado</h4>
-                  <div className="space-y-2">
-                    {Object.entries(detail.byCondition).map(([cond, count]) => {
-                      const cm = conditionMeta(cond)
-                      const pct = Math.round((count / detail.total) * 100)
-                      return (
-                        <div key={cond}>
-                          <div className="flex justify-between text-xs font-medium mb-1">
-                            <span className={`px-2 py-0.5 rounded-full font-bold ${cm.color}`}>{cm.label}</span>
-                            <span className="text-muted-foreground">{count} ({pct}%)</span>
-                          </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-500 bg-primary" style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {detailItem.invoiceBase64 && (
-                  <div>
-                    <h4 className="text-sm font-bold text-foreground mb-2 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-primary" /> Factura / Evidencia de Compra
-                    </h4>
-                    <div className="rounded-xl border bg-black/5 overflow-hidden">
-                      <img src={detailItem.invoiceBase64} alt="Factura" className="w-full max-h-48 object-contain" />
-                    </div>
-                  </div>
-                )}
-
-                {(() => {
-                  const maint = getMaintenanceInfo(detailItem);
-                  if (!maint) return null;
-                  return (
-                    <div className="p-4 rounded-xl space-y-2 mt-4 bg-muted/50 border">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-3 h-3 rounded-full ${maint.color} shadow-sm`} />
-                        <h4 className="font-bold text-foreground">Estado de Mantenimiento</h4>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{maint.text}</p>
-                      <Button variant="outline" size="sm" className="w-full mt-2 font-bold" onClick={async () => {
-                        const today = new Date().toISOString().split('T')[0];
-                        await db.items.update(detailItem.id, { last_maintenance_date: today, sync_status: 'pending_update' });
-                        setDetailItem({ ...detailItem, last_maintenance_date: today });
-                        if (navigator.onLine) syncItemsToSupabase();
-                      }}>
-                        Registrar Mantenimiento Hoy
-                      </Button>
-                    </div>
-                  );
-                })()}
-
-                {detailItem.status === 'discarded' && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 p-4 rounded-xl space-y-2 mt-4">
-                    <h4 className="font-bold text-red-700 dark:text-red-400">Información de Baja</h4>
-                    <p className="text-sm text-red-600 dark:text-red-300"><strong>Fecha:</strong> {new Date(detailItem.discard_date).toLocaleDateString()}</p>
-                    <p className="text-sm text-red-600 dark:text-red-300"><strong>Motivo:</strong> {detailItem.discard_reason}</p>
-                    {detailItem.discard_location && <p className="text-sm text-red-600 dark:text-red-300"><strong>Resguardo:</strong> {detailItem.discard_location}</p>}
-                    {detailItem.discard_photoBase64 && (
-                      <img src={detailItem.discard_photoBase64} alt="Evidencia" className="w-full h-32 object-cover rounded-lg mt-2" />
-                    )}
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 h-11 rounded-xl" onClick={() => setDetailItem(null)}>Cerrar</Button>
-                  {role === 'director' && detailItem.status !== 'discarded' && (
-                    <Button variant="destructive" className="flex-1 h-11 rounded-xl font-bold" onClick={() => { setItemToBaja(detailItem); setBajaModalOpen(true); setDetailItem(null); }}>
-                      Dar de Baja
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
       {/* Baja Modal */}
       {bajaModalOpen && itemToBaja && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -1633,9 +1515,9 @@ export default function AssetsView() {
       {/* Label Generator Modal */}
       {showLabelModal && (
         <LabelGeneratorModal
-          items={allItems}
+          items={labelModalFilterItems || allItems}
           locations={locations}
-          onClose={() => setShowLabelModal(false)}
+          onClose={() => { setShowLabelModal(false); setLabelModalFilterItems(null); }}
         />
       )}
     </div>

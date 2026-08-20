@@ -246,8 +246,8 @@ export default function ConciliationView() {
       {/* Header */}
       <div className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            Módulo de Conciliación
+          <h2 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+            Módulo de Conciliación con Padrón Oficial SEC
             <HelpTooltip 
               title="Conciliación de Inventario" 
               text="Compara el archivo Excel oficial de la SEC (Secretaría de Educación) con los bienes registrados en tu dispositivo. Identifica coincidencias, faltantes y sobrantes para mantener tu inventario actualizado." 
@@ -384,41 +384,41 @@ export default function ConciliationView() {
           </div>
 
           <Tabs defaultValue="coincidencias" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-12 rounded-xl bg-muted/80 p-1">
-              <TabsTrigger value="coincidencias" className="rounded-lg font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800">
-                Coinciden ({coincidencias.length})
+            <TabsList className="grid w-full grid-cols-3 h-12 rounded-xl bg-muted/80 p-1 overflow-hidden">
+              <TabsTrigger value="coincidencias" className="rounded-lg font-bold text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 truncate px-1">
+                Conciliados (Match) ({coincidencias.length})
               </TabsTrigger>
-              <TabsTrigger value="faltantes" className="rounded-lg font-bold data-[state=active]:bg-red-50 text-red-600 dark:data-[state=active]:bg-red-950">
-                Faltan ({faltantes.length})
+              <TabsTrigger value="sobrantes" className="rounded-lg font-bold text-xs sm:text-sm data-[state=active]:bg-yellow-50 text-yellow-600 dark:data-[state=active]:bg-yellow-950 truncate px-1">
+                Sobrantes en Escuela ({sobrantes.length})
               </TabsTrigger>
-              <TabsTrigger value="sobrantes" className="rounded-lg font-bold data-[state=active]:bg-yellow-50 text-yellow-600 dark:data-[state=active]:bg-yellow-950">
-                Sobran ({sobrantes.length})
+              <TabsTrigger value="faltantes" className="rounded-lg font-bold text-xs sm:text-sm data-[state=active]:bg-red-50 text-red-600 dark:data-[state=active]:bg-red-950 truncate px-1">
+                Faltantes Oficiales ({faltantes.length})
               </TabsTrigger>
             </TabsList>
             
             <div className="mt-4 bg-card rounded-xl border shadow-sm overflow-hidden">
               <TabsContent value="coincidencias" className="m-0">
-                <div className="p-4 bg-success/10 border-b flex items-center gap-2 text-success font-medium text-sm">
-                  <Check className="w-5 h-5" />
-                  Estos bienes coinciden entre lo escaneado y el padrón de la SEC.
+                <div className="p-4 bg-success/10 border-b flex items-start gap-2 text-success font-medium text-sm">
+                  <Check className="w-5 h-5 shrink-0 mt-0.5" />
+                  Bienes que coinciden en el padrón estatal y en la existencia física local.
                 </div>
                 <DataTable data={coincidencias} />
               </TabsContent>
               
-              <TabsContent value="faltantes" className="m-0">
-                <div className="p-4 bg-red-50 dark:bg-red-950/30 border-b border-red-100 dark:border-red-900/50 flex items-center gap-2 text-red-600 dark:text-red-400 font-medium text-sm">
-                  <AlertTriangle className="w-5 h-5" />
-                  Bienes reportados por la SEC que NO hemos encontrado físicamente. Al importar, se agregarán automáticamente.
-                </div>
-                <DataTable data={faltantes} />
-              </TabsContent>
-              
               <TabsContent value="sobrantes" className="m-0">
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/30 border-b border-yellow-100 dark:border-yellow-900/50 flex items-center gap-2 text-yellow-600 dark:text-yellow-400 font-medium text-sm">
-                  <AlertCircle className="w-5 h-5" />
-                  Bienes escaneados localmente que NO aparecen en el Excel de la SEC. No serán afectados al importar.
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/30 border-b border-yellow-100 dark:border-yellow-900/50 flex items-start gap-2 text-yellow-600 dark:text-yellow-400 font-medium text-sm">
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                  Equipos presentes en el plantel adquiridos por medios propios, donaciones o programas federales no reflejados en el sistema estatal.
                 </div>
                 <DataTable data={sobrantes} />
+              </TabsContent>
+
+              <TabsContent value="faltantes" className="m-0">
+                <div className="p-4 bg-red-50 dark:bg-red-950/30 border-b border-red-100 dark:border-red-900/50 flex items-start gap-2 text-red-600 dark:text-red-400 font-medium text-sm">
+                  <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                  Bienes exigidos por el inventario estatal que no se encuentran registrados físicamente en la escuela.
+                </div>
+                <DataTable data={faltantes} />
               </TabsContent>
             </div>
           </Tabs>

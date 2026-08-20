@@ -12,7 +12,7 @@ import { LayoutDashboard, QrCode, AlertCircle, FileSpreadsheet, Package, LogOut,
 
 import { useStore } from './store/useStore'
 import { syncAll } from './lib/sync'
-import { db } from './lib/db'
+import { db, migrateExpandBulkItems } from './lib/db'
 import { supabase } from './lib/supabase'
 import { signOut } from './lib/auth'
 import LocationsView from './components/views/LocationsView'
@@ -82,6 +82,11 @@ function App() {
       }
     };
     seedLocations();
+  }, []);
+
+  // Migrate bulk items (quantity>1) to individual records (runs once)
+  useEffect(() => {
+    migrateExpandBulkItems();
   }, []);
 
   // Redirect non-directors away from dashboard if active
