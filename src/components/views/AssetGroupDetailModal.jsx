@@ -630,8 +630,10 @@ export default function AssetGroupDetailModal({
   const [expandedLocation, setExpandedLocation] = useState(null)
   const [internalSearch, setInternalSearch] = useState('')
   const [localConditions, setLocalConditions] = useState(filterConditions || [])
+  const [localLocation, setLocalLocation] = useState(filterLocation || '')
 
   useEffect(() => { setLocalConditions(filterConditions || []) }, [filterConditions])
+  useEffect(() => { setLocalLocation(filterLocation || '') }, [filterLocation])
 
   // Batch Selection state
   const [selectionMode, setSelectionMode] = useState(false)
@@ -666,8 +668,8 @@ export default function AssetGroupDetailModal({
     const byLocation = {}
 
     const activeItems = groupItems.filter(item => {
-      const locFilterName = locationMap[filterLocation]?.name?.toLowerCase();
-      const matchLocation = !filterLocation || item.location_id === filterLocation || (locFilterName && (item.location_id || '').toLowerCase() === locFilterName);
+      const locFilterName = localLocation ? locationMap[localLocation]?.name?.toLowerCase() : null;
+      const matchLocation = !localLocation || item.location_id === localLocation || (locFilterName && (item.location_id || '').toLowerCase() === locFilterName);
       if (!matchLocation) return false;
       
       if (localConditions.length > 0 && !localConditions.includes(item.condition)) return false;
@@ -702,7 +704,7 @@ export default function AssetGroupDetailModal({
       byLocation: Object.values(byLocation).sort((a, b) => b.count - a.count),
       byCondition
     }
-  }, [groupItems, locationMap, filterLocation, localConditions])
+  }, [groupItems, locationMap, localLocation, localConditions])
 
   // Filter items by internal search
   const filterBySearch = (items) => {
@@ -863,17 +865,26 @@ export default function AssetGroupDetailModal({
                     <Trash2 className="w-3 h-3" /> Dados de Baja
                   </span>
                 )}
-                {filterLocation && (
-                  <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded flex items-center gap-1 border">
-                    <MapPin className="w-3 h-3" /> {locationMap[filterLocation]?.name || 'Ubicación Filtrada'}
-                  </span>
-                )}
               </div>
               
               {/* Local Condition Filters */}
               {activeTab !== 'discarded' && (
-                <div className="flex gap-1.5 mt-2.5 flex-wrap items-center">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase mr-1">Filtros:</span>
+                <div className="flex flex-col gap-2 mt-2.5">
+                  <div className="flex gap-2 flex-wrap items-center">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase mr-1">Ubicación:</span>
+                    <select
+                      value={localLocation}
+                      onChange={(e) => setLocalLocation(e.target.value)}
+                      className="h-7 text-[11px] font-bold px-2 py-0 rounded-md border border-border/50 bg-muted/30 text-foreground focus:ring-1 focus:ring-primary outline-none"
+                    >
+                      <option value="">Todas las ubicaciones</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={loc.id}>{loc.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap items-center">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase mr-1">Estado:</span>
                   {CONDITIONS.map(cond => {
                     const isActive = localConditions.length === 0 || localConditions.includes(cond.value)
                     return (
@@ -901,6 +912,7 @@ export default function AssetGroupDetailModal({
                       </button>
                     )
                   })}
+                  </div>
                 </div>
               )}
             </div>
