@@ -474,7 +474,10 @@ export default function AssetsView() {
         if (!isAssigned) return false;
       }
 
-      const matchSearch = !search || (item.description || '').toLowerCase().includes(search.toLowerCase()) || (item.serial_number || '').toLowerCase().includes(search.toLowerCase())
+      const matchSearch = !search || 
+        (item.name || '').toLowerCase().includes(search.toLowerCase()) || 
+        (item.description || '').toLowerCase().includes(search.toLowerCase()) || 
+        (item.serial_number || '').toLowerCase().includes(search.toLowerCase())
 
       // Permitir que si item.location_id es texto libre (importado de excel) empate con el nombre del salón del filtro
       const locFilterName = locationMap[filterLocation]?.name?.toLowerCase();
@@ -513,19 +516,65 @@ export default function AssetsView() {
     return Object.values(groups).sort((a, b) => b.items.length - a.items.length)
   }, [filteredItems])
 
-  // All active items for the selected group (unfiltered to show full picture)
+  // All items for the selected group, respecting current active filters (except text search)
   const detailGroupItems = useMemo(() => {
     if (!detailGroupName) return []
     const key = detailGroupName.trim().toLowerCase()
-    return allItems.filter(i =>
-      (i.name || i.description || '').trim().toLowerCase() === key &&
-      i.status !== 'discarded' &&
-      i.sync_status !== 'pending_delete'
-    )
-  }, [detailGroupName, allItems])
+    
+    return allItems.filter(item => {
+      if ((item.name || item.description || '').trim().toLowerCase() !== key) return false
+      
+      const isDiscarded = item.status === 'discarded'
+      if (activeTab === 'active' && isDiscarded) return false
+      if (activeTab === 'discarded' && !isDiscarded) return false
+      if (item.sync_status === 'pending_delete') return false
+
+      if (role === 'profesor') {
+        if (teacherLocationIds.size === 0) return false;
+        const itemLoc = (item.location_id || '').toLowerCase()
+        const locName = locationMap[item.location_id]?.name?.toLowerCase()
+        const isAssigned = teacherLocationIds.has(item.location_id) || teacherLocationIds.has(itemLoc) || (locName && teacherLocationIds.has(locName))
+        if (!isAssigned) return false;
+      }
+
+      const locFilterName = locationMap[filterLocation]?.name?.toLowerCase();
+      const matchLocation = !filterLocation || item.location_id === filterLocation || (locFilterName && (item.location_id || '').toLowerCase() === locFilterName);
+
+      const matchCondition = filterConditions.length === 0 || filterConditions.includes(item.condition)
+      const matchCategory = !filterCategory || item.category === filterCategory || (!item.category && filterCategory === "Otro")
+
+      return matchLocation && matchCondition && matchCategory
+    })
+  }, [detailGroupName, allItems, activeTab, role, teacherLocationIds, locationMap, filterLocation, filterConditions, filterCategory])
 
   const toggleCondition = (val) =>
     setFilterConditions(prev => prev.includes(val) ? prev.filter(c => c !== val) : [...prev, val])
+
+  const handleMassBaja = async (itemIds) => {
+    try {
+      const now = new Date().toISOString()
+      await Promise.all(itemIds.map(id => db.items.update(id, { 
+        status: 'discarded', 
+        discarded_at: now, 
+        sync_status: 'pending_update' 
+      })))
+      if (navigator.onLine) syncItemsToSupabase()
+    } catch (err) {
+      console.error("Error en baja masiva:", err)
+    }
+  }
+
+  const handleRestoreItem = async (itemId) => {
+    try {
+      await db.items.update(itemId, { 
+        status: 'active', 
+        sync_status: 'pending_update' 
+      })
+      if (navigator.onLine) syncItemsToSupabase()
+    } catch (err) {
+      console.error("Error al restaurar bien:", err)
+    }
+  }
 
   const openCreate = () => { setEditingId(null); setFormData(emptyForm()); setFormError(""); setDrawerOpen(true) }
 
@@ -861,7 +910,7 @@ export default function AssetsView() {
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por descripción o No. de serie…" className="pl-9 h-11 rounded-xl" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, descripción o No. de serie..." className="pl-9 h-11 rounded-xl" />
           {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>}
         </div>
         <Button variant="outline" onClick={() => setFiltersOpen(p => !p)} className={`h-11 px-3 rounded-xl gap-1.5 transition-all ${activeFiltersCount > 0 ? "border-primary text-primary" : ""}`}>
@@ -1432,6 +1481,9 @@ export default function AssetsView() {
           role={role}
           searchTerm={search}
           user={user}
+          activeTab={activeTab}
+          filterLocation={filterLocation}
+          filterConditions={filterConditions}
           onClose={() => setDetailGroupName(null)}
           onEditItem={(item) => {
             setDetailGroupName(null)
@@ -1470,6 +1522,8 @@ export default function AssetsView() {
             setLabelModalFilterItems(items)
             setShowLabelModal(true)
           }}
+          onMassBaja={handleMassBaja}
+          onRestoreItem={handleRestoreItem}
         />
       )}
       {/* Baja Modal */}

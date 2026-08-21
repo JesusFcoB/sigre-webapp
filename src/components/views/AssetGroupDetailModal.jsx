@@ -9,7 +9,8 @@ import {
   Package, X, ChevronDown, ChevronRight, QrCode,
   Edit2, Trash2, Info, MapPin, FileSpreadsheet,
   Search, MoreVertical, ArrowRightLeft, Tag,
-  History, Clock, CheckCircle2
+  History, Clock, CheckCircle2, CheckSquare, Square,
+  RotateCcw, AlertTriangle, ListChecks
 } from "lucide-react"
 import * as XLSX from 'xlsx'
 
@@ -198,6 +199,193 @@ function TransferModal({ item, locations, locationMap, userName, onClose, onDone
             disabled={!targetLocation || saving}
           >
             {saving ? 'Guardando...' : 'Confirmar Traspaso'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Mass Transfer Modal ─────────────────────────────────────
+function MassTransferModal({ itemIds, groupItems, locations, locationMap, userName, onClose, onDone }) {
+  const [targetLocation, setTargetLocation] = useState('')
+  const [search, setSearch] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return locations
+    return locations.filter(l =>
+      ((l.name || '').toLowerCase().includes(search.toLowerCase()) ||
+       (l.responsible_name || '').toLowerCase().includes(search.toLowerCase()))
+    )
+  }, [locations, search])
+
+  const handleSubmit = async () => {
+    if (!targetLocation || saving) return
+    setSaving(true)
+    try {
+      const newLocName = locationMap[targetLocation]?.name || targetLocation
+
+      await Promise.all(itemIds.map(async (id) => {
+        const item = groupItems.find(i => i.id === id)
+        if (!item || item.location_id === targetLocation) return
+
+        const oldLocName = locationMap[item.location_id]?.name || item.location_id || 'Sin ubicación'
+
+        await db.items.update(item.id, {
+          location_id: targetLocation,
+          sync_status: 'pending_update'
+        })
+
+        await addHistoryRecord('transfer', item.id, item.location_id, targetLocation, {
+          oldLabel: oldLocName,
+          newLabel: newLocName,
+          userName,
+          reason: 'Traspaso Masivo'
+        })
+      }))
+
+      if (navigator.onLine) syncItemsToSupabase()
+      onDone()
+    } catch (err) {
+      console.error('Error en traspaso masivo:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-card rounded-3xl shadow-2xl z-10 p-5 space-y-4 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <ArrowRightLeft className="w-5 h-5 text-blue-600" />
+            Traspaso Masivo
+          </h3>
+          <Button variant="ghost" size="icon" className="rounded-full" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <p className="text-sm text-muted-foreground font-medium bg-muted/50 p-3 rounded-xl border border-border/50">
+          Estás a punto de traspasar <span className="font-bold text-foreground">{itemIds.length} bienes</span> a una nueva ubicación.
+        </p>
+
+        {/* Target Location */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold text-green-600 uppercase tracking-wide">Ubicación de Destino</p>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar salón..."
+              className="pl-9 h-10 rounded-xl text-sm"
+            />
+          </div>
+          <div className="max-h-40 overflow-y-auto space-y-1 border rounded-xl p-1.5">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-3">No se encontraron salones</p>
+            ) : (
+              filtered.map(loc => (
+                <button
+                  key={loc.id}
+                  onClick={() => setTargetLocation(loc.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-sm transition-all ${
+                    targetLocation === loc.id
+                      ? 'bg-green-100 dark:bg-green-900/40 border-green-300 dark:border-green-700 border font-bold text-green-700 dark:text-green-300'
+                      : 'hover:bg-muted font-medium'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{loc.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{loc.responsible_name || '—'}</p>
+                  </div>
+                  {targetLocation === loc.id && <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            className="flex-1 h-11 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={handleSubmit}
+            disabled={!targetLocation || saving}
+          >
+            {saving ? 'Procesando...' : 'Traspasar'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Mass Baja Modal ─────────────────────────────────────────
+function MassBajaModal({ itemIds, onClose, onConfirm }) {
+  const [saving, setSaving] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const expectedText = "CONFIRMAR BAJA"
+
+  const handleSubmit = async () => {
+    if (confirmText !== expectedText || saving) return
+    setSaving(true)
+    try {
+      await onConfirm(itemIds)
+      onClose()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-card rounded-3xl shadow-2xl z-10 p-5 space-y-4 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            Confirmar Baja Masiva
+          </h3>
+          <Button variant="ghost" size="icon" className="rounded-full" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Estás a punto de dar de baja <span className="font-bold text-foreground">{itemIds.length} bienes</span>. 
+          Tendrás 30 días para deshacer esta acción si fue un error.
+        </p>
+
+        <div className="bg-red-50/50 dark:bg-red-950/20 p-4 rounded-xl border border-red-200 dark:border-red-900/50 space-y-3">
+          <p className="text-xs font-medium text-foreground">
+            Para continuar, escribe <span className="font-mono font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-1 rounded">{expectedText}</span>
+          </p>
+          <Input 
+            value={confirmText}
+            onChange={e => setConfirmText(e.target.value)}
+            placeholder={expectedText}
+            className="text-center font-mono font-bold tracking-widest uppercase border-red-300 dark:border-red-800 focus-visible:ring-red-500"
+          />
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            className="flex-1 h-11 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white"
+            onClick={handleSubmit}
+            disabled={confirmText !== expectedText || saving}
+          >
+            {saving ? 'Dando de baja...' : 'Dar de Baja'}
           </Button>
         </div>
       </div>
@@ -437,15 +625,21 @@ function HistoryTimelineModal({ item, locationMap, onClose }) {
 // ─── Main Component ──────────────────────────────────────────
 export default function AssetGroupDetailModal({
   groupName, groupItems, locations, locationMap, onClose, onEditItem, onBajaItem, onGenerateQR, role,
-  searchTerm, user
+  searchTerm, user, activeTab, filterLocation, filterConditions, onMassBaja, onRestoreItem
 }) {
   const [expandedLocation, setExpandedLocation] = useState(null)
   const [internalSearch, setInternalSearch] = useState('')
+  
+  // Batch Selection state
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
 
   // Mini-modal states
   const [transferItem, setTransferItem] = useState(null)
   const [stateChangeItem, setStateChangeItem] = useState(null)
   const [historyItem, setHistoryItem] = useState(null)
+  const [showMassTransfer, setShowMassTransfer] = useState(false)
+  const [showMassBaja, setShowMassBaja] = useState(false)
 
   const userName = user?.user_metadata?.name || user?.email || 'Sistema'
 
@@ -455,6 +649,14 @@ export default function AssetGroupDetailModal({
       setInternalSearch(searchTerm.trim())
     }
   }, [searchTerm])
+  
+  // Disable selection mode if discarded tab
+  useEffect(() => {
+    if (activeTab === 'discarded') {
+      setSelectionMode(false)
+      setSelectedIds(new Set())
+    }
+  }, [activeTab])
 
   // Compute distribution data
   const detail = useMemo(() => {
@@ -495,6 +697,7 @@ export default function AssetGroupDetailModal({
     if (!internalSearch.trim()) return items
     const q = internalSearch.toLowerCase()
     return items.filter(item =>
+      (item.name || '').toLowerCase().includes(q) ||
       (item.serial_number || '').toLowerCase().includes(q) ||
       (item.description || '').toLowerCase().includes(q)
     )
@@ -569,17 +772,53 @@ export default function AssetGroupDetailModal({
     setExpandedLocation(prev => prev === locId ? null : locId)
   }
 
-  // Callback when a transfer or state change is done — close mini-modal
   const handleActionDone = () => {
     setTransferItem(null)
     setStateChangeItem(null)
+    setShowMassTransfer(false)
+    setShowMassBaja(false)
+    setSelectedIds(new Set())
+  }
+  
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode)
+    setSelectedIds(new Set())
+  }
+
+  const toggleItemSelection = (id) => {
+    const newSet = new Set(selectedIds)
+    if (newSet.has(id)) newSet.delete(id)
+    else newSet.add(id)
+    setSelectedIds(newSet)
+  }
+
+  const handleSelectAll = () => {
+    const visibleIds = new Set()
+    detail.byLocation.forEach(loc => {
+      const filteredLocItems = filterBySearch(loc.items)
+      filteredLocItems.forEach(i => visibleIds.add(i.id))
+    })
+    
+    if (selectedIds.size === visibleIds.size) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(visibleIds)
+    }
+  }
+  
+  const checkIsRestorable = (discardedAt) => {
+    if (!discardedAt) return false // No date means legacy discard, un-restorable for safety
+    const msIn30Days = 30 * 24 * 60 * 60 * 1000
+    const now = Date.now()
+    const diff = now - new Date(discardedAt).getTime()
+    return diff <= msIn30Days
   }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-3xl bg-card rounded-3xl shadow-2xl z-10 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-        <div className="p-5 md:p-8 space-y-5">
+        <div className="p-5 md:p-8 space-y-5 pb-20">
 
           {/* Header */}
           <div className="flex items-start gap-3">
@@ -605,6 +844,28 @@ export default function AssetGroupDetailModal({
                   </span>
                 )}
               </div>
+              
+              {/* Context-Aware Filter Chips */}
+              <div className="flex gap-1.5 mt-2 flex-wrap">
+                {activeTab === 'discarded' && (
+                  <span className="text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 px-2 py-0.5 rounded flex items-center gap-1">
+                    <Trash2 className="w-3 h-3" /> Dados de Baja
+                  </span>
+                )}
+                {filterLocation && (
+                  <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-0.5 rounded flex items-center gap-1 border">
+                    <MapPin className="w-3 h-3" /> {locationMap[filterLocation]?.name || 'Ubicación Filtrada'}
+                  </span>
+                )}
+                {filterConditions && filterConditions.length > 0 && filterConditions.map(cond => {
+                  const cm = conditionMeta(cond)
+                  return (
+                    <span key={cond} className={`text-[10px] font-medium px-2 py-0.5 rounded flex items-center gap-1 border ${cm.color}`}>
+                      Estado: {cm.label}
+                    </span>
+                  )
+                })}
+              </div>
             </div>
             <Button variant="ghost" size="icon" className="rounded-full shrink-0 -mt-1" onClick={onClose}>
               <X className="w-5 h-5" />
@@ -612,14 +873,32 @@ export default function AssetGroupDetailModal({
           </div>
 
           {/* Total Units Card */}
-          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Info className="w-6 h-6 text-primary" />
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+                <Info className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs font-medium">
+                  {filterLocation || filterConditions?.length > 0 || activeTab === 'discarded' 
+                    ? 'Resultados filtrados' 
+                    : 'Total de unidades registradas'}
+                </p>
+                <p className="text-4xl font-black text-primary">{detail.total}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-muted-foreground text-xs font-medium">Total de unidades registradas</p>
-              <p className="text-4xl font-black text-primary">{detail.total}</p>
-            </div>
+            
+            {/* Selection Mode Toggle */}
+            {activeTab !== 'discarded' && detail.total > 0 && role !== 'profesor' && (
+              <Button 
+                variant={selectionMode ? "default" : "outline"}
+                className={`h-10 rounded-xl font-bold gap-2 transition-all ${selectionMode ? 'shadow-md shadow-primary/20' : ''}`}
+                onClick={toggleSelectionMode}
+              >
+                <ListChecks className="w-4 h-4" />
+                {selectionMode ? 'Cancelar Selección' : 'Modo Selección'}
+              </Button>
+            )}
           </div>
 
           {/* Internal Search */}
@@ -628,7 +907,7 @@ export default function AssetGroupDetailModal({
             <Input
               value={internalSearch}
               onChange={e => setInternalSearch(e.target.value)}
-              placeholder="Buscar por número de serie..."
+              placeholder="Buscar por nombre, serie o descripción..."
               className="pl-9 h-10 rounded-xl text-sm"
             />
             {internalSearch && (
@@ -655,10 +934,17 @@ export default function AssetGroupDetailModal({
 
           {/* Distribution by Location */}
           <div>
-            <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary" />
-              Distribución por Ubicación
-            </h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary" />
+                Distribución por Ubicación
+              </h4>
+              {selectionMode && (
+                <Button variant="ghost" size="sm" onClick={handleSelectAll} className="h-8 text-xs font-bold text-primary hover:bg-primary/10">
+                  Seleccionar Todos
+                </Button>
+              )}
+            </div>
             <div className="space-y-2">
               {detail.byLocation.map((loc) => {
                 const isExpanded = expandedLocation === loc.locId
@@ -734,26 +1020,62 @@ export default function AssetGroupDetailModal({
                               const cm = conditionMeta(item.condition)
                               const isHighlighted = internalSearch.trim() &&
                                 (item.serial_number || '').toLowerCase().includes(internalSearch.toLowerCase())
+                              const isSelected = selectedIds.has(item.id)
+                              const isRestorable = activeTab === 'discarded' && checkIsRestorable(item.discarded_at)
+
                               return (
                                 <div
                                   key={item.id}
-                                  className={`flex items-center justify-between bg-background p-2.5 rounded-xl border shadow-2xs transition-all ${
-                                    isHighlighted ? 'ring-2 ring-primary/40 border-primary/30' : ''
+                                  onClick={() => selectionMode ? toggleItemSelection(item.id) : null}
+                                  className={`flex items-center gap-3 bg-background p-2.5 rounded-xl border shadow-2xs transition-all ${
+                                    selectionMode ? 'cursor-pointer hover:border-primary/40' : ''
+                                  } ${isHighlighted ? 'ring-2 ring-primary/40 border-primary/30' : ''} ${
+                                    isSelected ? 'bg-primary/5 border-primary shadow-sm' : ''
                                   }`}
                                 >
+                                  {selectionMode && (
+                                    <div className="shrink-0 pl-1 text-primary">
+                                      {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5 text-muted-foreground/50" />}
+                                    </div>
+                                  )}
+                                  
                                   <div className="min-w-0 flex-1">
                                     <p className="text-xs font-mono font-bold text-foreground truncate">{item.serial_number || 'Sin serie'}</p>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cm.color}`}>{cm.label}</span>
+                                    <div className="flex gap-1.5 mt-0.5">
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cm.color}`}>{cm.label}</span>
+                                      {activeTab === 'discarded' && item.discarded_at && (
+                                        <span className="text-[10px] font-medium text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
+                                          {new Date(item.discarded_at).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <ItemDropdown
-                                    item={item}
-                                    role={role}
-                                    onTransfer={setTransferItem}
-                                    onChangeState={setStateChangeItem}
-                                    onHistory={setHistoryItem}
-                                    onEdit={(it) => onEditItem(it)}
-                                    onBaja={(it) => onBajaItem(it)}
-                                  />
+                                  
+                                  {!selectionMode && activeTab !== 'discarded' && (
+                                    <ItemDropdown
+                                      item={item}
+                                      role={role}
+                                      onTransfer={setTransferItem}
+                                      onChangeState={setStateChangeItem}
+                                      onHistory={setHistoryItem}
+                                      onEdit={(it) => onEditItem(it)}
+                                      onBaja={(it) => onBajaItem(it)}
+                                    />
+                                  )}
+                                  
+                                  {!selectionMode && activeTab === 'discarded' && (
+                                    <div className="shrink-0 pr-1">
+                                      {isRestorable ? (
+                                        <Button size="sm" variant="outline" className="h-8 gap-1.5 text-green-600 border-green-200 hover:bg-green-50" onClick={() => onRestoreItem(item.id)}>
+                                          <RotateCcw className="w-3.5 h-3.5" /> Restaurar
+                                        </Button>
+                                      ) : (
+                                        <span className="text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-950/30 px-2 py-1 rounded-md border border-red-100 dark:border-red-900/30">
+                                          Baja Definitiva
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               )
                             })}
@@ -798,6 +1120,22 @@ export default function AssetGroupDetailModal({
           </Button>
         </div>
       </div>
+      
+      {/* Sticky Bottom Bar for Selection Mode */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-foreground text-background px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-5">
+          <span className="font-bold text-sm whitespace-nowrap">{selectedIds.size} seleccionados</span>
+          <div className="w-px h-5 bg-background/20" />
+          <Button variant="ghost" className="h-8 px-3 text-background hover:bg-background/20 hover:text-background" onClick={() => setShowMassTransfer(true)}>
+            Traspasar
+          </Button>
+          {role === 'director' && (
+            <Button variant="ghost" className="h-8 px-3 text-red-400 hover:bg-red-500/20 hover:text-red-300" onClick={() => setShowMassBaja(true)}>
+              Dar de Baja
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* ─── Sub-Modals ─── */}
       {transferItem && (
@@ -808,6 +1146,29 @@ export default function AssetGroupDetailModal({
           userName={userName}
           onClose={() => setTransferItem(null)}
           onDone={handleActionDone}
+        />
+      )}
+      
+      {showMassTransfer && (
+        <MassTransferModal
+          itemIds={Array.from(selectedIds)}
+          groupItems={groupItems}
+          locations={locations}
+          locationMap={locationMap}
+          userName={userName}
+          onClose={() => setShowMassTransfer(false)}
+          onDone={handleActionDone}
+        />
+      )}
+      
+      {showMassBaja && (
+        <MassBajaModal
+          itemIds={Array.from(selectedIds)}
+          onClose={() => setShowMassBaja(false)}
+          onConfirm={(ids) => {
+            onMassBaja(ids)
+            handleActionDone()
+          }}
         />
       )}
 
