@@ -66,6 +66,46 @@ db.version(9).stores({
   vales: '++id, person_name, start_date, end_date, sync_status, vale_status, requested_by, item_id'
 });
 
+// v10: Add item_history table for traceability (transfers & state changes)
+db.version(10).stores({
+  items: 'id, official_inventory_number, description, name, condition, location_id, category, sync_status, status',
+  locations: 'id, name, responsible_name, sync_status',
+  tickets: '++id, issue_type, description, location_id, specific_location, sync_status, reported_at, status, solved_at',
+  vales: '++id, person_name, start_date, end_date, sync_status, vale_status, requested_by, item_id',
+  item_history: 'id, item_id, action_type, created_at'
+});
+
+/**
+ * Inserts a traceability record into item_history.
+ * @param {'transfer'|'state_change'} actionType - The type of action performed.
+ * @param {string} itemId - The ID of the item.
+ * @param {string} oldValue - The previous value (location_id or condition).
+ * @param {string} newValue - The new value.
+ * @param {object} [options] - Additional options.
+ * @param {string} [options.oldLabel] - Human-readable previous value (e.g. "Almacén").
+ * @param {string} [options.newLabel] - Human-readable new value (e.g. "Aula 1A").
+ * @param {string} [options.reason] - Optional reason/observation.
+ * @param {string} [options.userName] - Name of the user who performed the action.
+ */
+export async function addHistoryRecord(actionType, itemId, oldValue, newValue, options = {}) {
+  try {
+    await db.item_history.add({
+      id: crypto.randomUUID(),
+      item_id: itemId,
+      action_type: actionType,
+      old_value: oldValue,
+      new_value: newValue,
+      old_label: options.oldLabel || oldValue,
+      new_label: options.newLabel || newValue,
+      reason: options.reason || '',
+      user_name: options.userName || 'Sistema',
+      created_at: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[SIGRE] Error adding history record:', err);
+  }
+}
+
 /**
  * Migración v9: Expande registros con quantity > 1 en registros individuales.
  * Cada unidad física obtiene su propia serie única.

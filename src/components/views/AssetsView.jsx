@@ -1430,6 +1430,8 @@ export default function AssetsView() {
           locations={locations}
           locationMap={locationMap}
           role={role}
+          searchTerm={search}
+          user={user}
           onClose={() => setDetailGroupName(null)}
           onEditItem={(item) => {
             setDetailGroupName(null)
