@@ -578,8 +578,8 @@ export default function AssetGroupDetailModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-card rounded-3xl shadow-2xl z-10 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-        <div className="p-5 space-y-5">
+      <div className="relative w-full max-w-3xl bg-card rounded-3xl shadow-2xl z-10 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+        <div className="p-5 md:p-8 space-y-5">
 
           {/* Header */}
           <div className="flex items-start gap-3">
@@ -668,11 +668,11 @@ export default function AssetGroupDetailModal({
                 if (internalSearch.trim() && filteredLocItems.length === 0) return null
 
                 return (
-                  <div key={loc.locId} className={`rounded-2xl border overflow-hidden transition-all duration-300 ${isExpanded ? 'shadow-md border-primary/30' : 'shadow-sm'}`}>
+                  <div key={loc.locId} className={`rounded-2xl border transition-all duration-300 ${isExpanded ? 'shadow-md border-primary/30' : 'shadow-sm'}`}>
                     {/* Location Row (clickable) */}
                     <button
                       onClick={() => toggleLocation(loc.locId)}
-                      className="w-full flex items-center justify-between p-3.5 hover:bg-muted/50 transition-colors text-left"
+                      className={`w-full flex items-center justify-between p-3.5 hover:bg-muted/50 transition-colors text-left ${isExpanded ? 'rounded-t-2xl' : 'rounded-2xl'}`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isExpanded ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
@@ -697,7 +697,7 @@ export default function AssetGroupDetailModal({
 
                     {/* Expanded Content */}
                     {isExpanded && (
-                      <div className="border-t bg-muted/20 p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                      <div className="border-t bg-muted/20 p-4 space-y-4 rounded-b-2xl animate-in slide-in-from-top-2 duration-200">
                         {/* Condition Bars (only when not filtering) */}
                         {!internalSearch.trim() && (
                           <div className="space-y-2">
