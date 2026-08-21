@@ -537,15 +537,9 @@ export default function AssetsView() {
         if (!isAssigned) return false;
       }
 
-      const locFilterName = locationMap[filterLocation]?.name?.toLowerCase();
-      const matchLocation = !filterLocation || item.location_id === filterLocation || (locFilterName && (item.location_id || '').toLowerCase() === locFilterName);
-
-      const matchCondition = filterConditions.length === 0 || filterConditions.includes(item.condition)
-      const matchCategory = !filterCategory || item.category === filterCategory || (!item.category && filterCategory === "Otro")
-
-      return matchLocation && matchCondition && matchCategory
+      return true
     })
-  }, [detailGroupName, allItems, activeTab, role, teacherLocationIds, locationMap, filterLocation, filterConditions, filterCategory])
+  }, [detailGroupName, allItems, activeTab, role, teacherLocationIds, locationMap])
 
   const toggleCondition = (val) =>
     setFilterConditions(prev => prev.includes(val) ? prev.filter(c => c !== val) : [...prev, val])

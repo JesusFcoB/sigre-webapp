@@ -629,7 +629,10 @@ export default function AssetGroupDetailModal({
 }) {
   const [expandedLocation, setExpandedLocation] = useState(null)
   const [internalSearch, setInternalSearch] = useState('')
-  
+  const [localConditions, setLocalConditions] = useState(filterConditions || [])
+
+  useEffect(() => { setLocalConditions(filterConditions || []) }, [filterConditions])
+
   // Batch Selection state
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -662,7 +665,16 @@ export default function AssetGroupDetailModal({
   const detail = useMemo(() => {
     const byLocation = {}
 
-    groupItems.forEach(item => {
+    const activeItems = groupItems.filter(item => {
+      const locFilterName = locationMap[filterLocation]?.name?.toLowerCase();
+      const matchLocation = !filterLocation || item.location_id === filterLocation || (locFilterName && (item.location_id || '').toLowerCase() === locFilterName);
+      if (!matchLocation) return false;
+      
+      if (localConditions.length > 0 && !localConditions.includes(item.condition)) return false;
+      return true;
+    })
+
+    activeItems.forEach(item => {
       const locId = item.location_id || '__none__'
       const locName = locationMap[locId]?.name || locId || 'Sin aula'
       const responsible = locationMap[locId]?.responsible_name || '—'
@@ -681,16 +693,16 @@ export default function AssetGroupDetailModal({
     })
 
     const byCondition = {}
-    groupItems.forEach(item => {
+    activeItems.forEach(item => {
       byCondition[item.condition] = (byCondition[item.condition] || 0) + 1
     })
 
     return {
-      total: groupItems.length,
+      total: activeItems.length,
       byLocation: Object.values(byLocation).sort((a, b) => b.count - a.count),
       byCondition
     }
-  }, [groupItems, locationMap])
+  }, [groupItems, locationMap, filterLocation, localConditions])
 
   // Filter items by internal search
   const filterBySearch = (items) => {
@@ -845,7 +857,6 @@ export default function AssetGroupDetailModal({
                 )}
               </div>
               
-              {/* Context-Aware Filter Chips */}
               <div className="flex gap-1.5 mt-2 flex-wrap">
                 {activeTab === 'discarded' && (
                   <span className="text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 px-2 py-0.5 rounded flex items-center gap-1">
@@ -857,15 +868,41 @@ export default function AssetGroupDetailModal({
                     <MapPin className="w-3 h-3" /> {locationMap[filterLocation]?.name || 'Ubicación Filtrada'}
                   </span>
                 )}
-                {filterConditions && filterConditions.length > 0 && filterConditions.map(cond => {
-                  const cm = conditionMeta(cond)
-                  return (
-                    <span key={cond} className={`text-[10px] font-medium px-2 py-0.5 rounded flex items-center gap-1 border ${cm.color}`}>
-                      Estado: {cm.label}
-                    </span>
-                  )
-                })}
               </div>
+              
+              {/* Local Condition Filters */}
+              {activeTab !== 'discarded' && (
+                <div className="flex gap-1.5 mt-2.5 flex-wrap items-center">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase mr-1">Filtros:</span>
+                  {CONDITIONS.map(cond => {
+                    const isActive = localConditions.length === 0 || localConditions.includes(cond.value)
+                    return (
+                      <button
+                        key={cond.value}
+                        onClick={() => {
+                          setLocalConditions(prev => {
+                            let next
+                            if (prev.length === 0) {
+                              next = CONDITIONS.filter(c => c.value !== cond.value).map(c => c.value)
+                            } else {
+                              if (prev.includes(cond.value)) next = prev.filter(c => c !== cond.value)
+                              else next = [...prev, cond.value]
+                            }
+                            return next.length === CONDITIONS.length ? [] : next
+                          })
+                        }}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 border transition-all ${
+                          isActive 
+                            ? cond.color + ' border-transparent shadow-sm' 
+                            : 'bg-background border-border/50 text-muted-foreground opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        {cond.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
             <Button variant="ghost" size="icon" className="rounded-full shrink-0 -mt-1" onClick={onClose}>
               <X className="w-5 h-5" />
@@ -888,17 +925,6 @@ export default function AssetGroupDetailModal({
               </div>
             </div>
             
-            {/* Selection Mode Toggle */}
-            {activeTab !== 'discarded' && detail.total > 0 && role !== 'profesor' && (
-              <Button 
-                variant={selectionMode ? "default" : "outline"}
-                className={`h-10 rounded-xl font-bold gap-2 transition-all ${selectionMode ? 'shadow-md shadow-primary/20' : ''}`}
-                onClick={toggleSelectionMode}
-              >
-                <ListChecks className="w-4 h-4" />
-                {selectionMode ? 'Cancelar Selección' : 'Modo Selección'}
-              </Button>
-            )}
           </div>
 
           {/* Internal Search */}
@@ -939,11 +965,24 @@ export default function AssetGroupDetailModal({
                 <MapPin className="w-4 h-4 text-primary" />
                 Distribución por Ubicación
               </h4>
-              {selectionMode && (
-                <Button variant="ghost" size="sm" onClick={handleSelectAll} className="h-8 text-xs font-bold text-primary hover:bg-primary/10">
-                  Seleccionar Todos
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {selectionMode && (
+                  <Button variant="ghost" size="sm" onClick={handleSelectAll} className="h-8 px-2 text-xs font-bold text-primary hover:bg-primary/10">
+                    Seleccionar Todos
+                  </Button>
+                )}
+                {activeTab !== 'discarded' && detail.total > 0 && role !== 'profesor' && (
+                  <Button 
+                    variant={selectionMode ? "default" : "outline"}
+                    size="sm"
+                    className={`h-8 px-3 rounded-lg font-bold gap-1.5 transition-all ${selectionMode ? 'shadow-md shadow-primary/20' : ''}`}
+                    onClick={toggleSelectionMode}
+                  >
+                    <ListChecks className="w-3.5 h-3.5" />
+                    {selectionMode ? 'Cancelar' : 'Modo Selección'}
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               {detail.byLocation.map((loc) => {
