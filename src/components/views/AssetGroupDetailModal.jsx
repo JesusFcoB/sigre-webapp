@@ -729,7 +729,7 @@ export default function AssetGroupDetailModal({
                               : 'Productos Individuales'
                             }
                           </p>
-                          <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                          <div className="space-y-1.5">
                             {filteredLocItems.map(item => {
                               const cm = conditionMeta(item.condition)
                               const isHighlighted = internalSearch.trim() &&
